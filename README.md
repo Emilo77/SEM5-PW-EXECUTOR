@@ -11,7 +11,7 @@ Polecenie `run A B C ...` tworzy nowe zadanie, rozpoczynając wykonanie programu
 
 ### Polecenie out
 
-Polecenie out `T` wypisuje `Task T stdout: 'S'.\n`, gdzie `S` to ostatnia linia (bez znaku końca linii) dotychczas wypisana przez program `A` z zadania nr `T`. W rozwiązaniu na mniej punktów, egzekutor może zaczekać, aż program `A` wypisze kolejną linię (lub `EOF`) i użyć jej jako `S`. W rozwiązaniu na pełną liczbę punktów, egzekutor powinien niezwłocznie wypisać ostatnią linię (o ile program `A` przez dłuższy czas nic więcej nie wypisze; jeśli program `A` w krótkim czasie wypisze kolejne linie, można użyć też dowolnej z nich). Program `A` powinien kontynuować działanie.
+Polecenie `out T` wypisuje `Task T stdout: 'S'.\n`, gdzie `S` to ostatnia linia (bez znaku końca linii) dotychczas wypisana przez program `A` z zadania nr `T`. W rozwiązaniu na mniej punktów, egzekutor może zaczekać, aż program `A` wypisze kolejną linię (lub `EOF`) i użyć jej jako `S`. W rozwiązaniu na pełną liczbę punktów, egzekutor powinien niezwłocznie wypisać ostatnią linię (o ile program `A` przez dłuższy czas nic więcej nie wypisze; jeśli program `A` w krótkim czasie wypisze kolejne linie, można użyć też dowolnej z nich). Program `A` powinien kontynuować działanie.
 
 Jeśli program jeszcze nic nie wypisał, można użyć pustego `S`. Jeśli program się zakończył, `S` powinno być ostatnią linią wypisaną przez cały program.
 
