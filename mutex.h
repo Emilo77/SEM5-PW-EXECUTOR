@@ -1,0 +1,7 @@
+#ifndef MIMUW_FORK_MUTEX_H
+#define MIMUW_FORK_MUTEX_H
+
+
+
+
+#endif // MIMUW_FORK_MUTEX_H

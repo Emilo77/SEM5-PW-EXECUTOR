@@ -1,9 +1,25 @@
 #include "Executor.h"
 
-void Executor::print_output(string s)
+void Executor::print_started(id_t id, pid_t p)
 {
-    cout << "Task T stdout: '" << s << "'.\n";
+    cout << "Task " << id << " started: pid " << p << '\n';
 }
+
+void Executor::print_err(id_t id, string s)
+{
+    cout << "Task " << id << " stderr: '" << s << "'.\n";
+}
+
+void Executor::print_out(id_t id, string s)
+{
+    cout << "Task " << id << " stdout: '" << s << "'.\n";
+}
+
+void Executor::print_ended(id_t id, int status)
+{
+    cout << "Task " << id << " ended: status " << status << ".\n";
+}
+
 
 void Executor::execute_command(char* command, char** args)
 {
@@ -28,7 +44,7 @@ void Executor::execute_command(char* command, char** args)
         exit(0);
     }
 
-    if (!strcmp(command, "\n")) {
+    if (!strcmp(command, "")) {
         return;
     }
 
@@ -49,9 +65,10 @@ void Executor::execute_command(char* command, char** args)
         return;
     }
 
-    printf("Unknown command.");
+    cout << "Unknown command.\n";
     exit(1);
 }
+
 
 void Executor::run()
 {
@@ -71,28 +88,42 @@ void Executor::run()
 
     close_and_quit(); // Czekanie aż taski się wykonają itp.
 }
-void Executor::close_and_quit()
-{
-}
-
 
 
 void Executor::execute_run(char* program, char** args)
 {
-    exit(69);
+    auto id = idGenerator.new_id();
+    auto new_task = Task(id, program, args);
+    tasksMap.emplace(id, new_task);
+
+    print_started(id, 69);
 }
 
-void Executor::execute_out(id_type task_id)
+
+void Executor::execute_out(id_t task_id)
+{
+    // todo
+    print_out(task_id, "essa");
+}
+
+
+void Executor::execute_err(id_t task_id)
+{
+    //todo
+    print_err(task_id, "essa");
+}
+
+
+void Executor::execute_kill(id_t task_id)
+{
+    print_ended(69, 500);
+}
+
+
+void Executor::close_and_quit()
 {
 }
 
-void Executor::execute_err(id_type task_id)
-{
-}
-
-void Executor::execute_kill(id_type task_id)
-{
-}
 
 int main()
 {

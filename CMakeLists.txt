@@ -10,9 +10,16 @@ add_library(utils utils.c)
 add_executable(executor
         Executor.cpp
         Task.cpp
-        Program.cpp)
+        Program.cpp
+        mutex.cpp)
+
+#do usunięcia później
+add_executable(testing testing.cpp)
 
 target_link_libraries(executor utils err pthread)
+
+#do usunięcia później
+target_link_libraries(testing utils err pthread)
 
 #macro (add_executable _name)
 #    # invoke built-in add_executable
