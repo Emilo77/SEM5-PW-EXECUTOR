@@ -1,26 +1,5 @@
 #include "Executor.h"
 
-void Executor::print_started(id_t id, pid_t p)
-{
-    cout << "Task " << id << " started: pid " << p << '\n';
-}
-
-void Executor::print_err(id_t id, string s)
-{
-    cout << "Task " << id << " stderr: '" << s << "'.\n";
-}
-
-void Executor::print_out(id_t id, string s)
-{
-    cout << "Task " << id << " stdout: '" << s << "'.\n";
-}
-
-void Executor::print_ended(id_t id, int status)
-{
-    cout << "Task " << id << " ended: status " << status << ".\n";
-}
-
-
 void Executor::execute_command(char* command, char** args)
 {
     if (!strcmp(command, "run")) {
@@ -34,7 +13,10 @@ void Executor::execute_command(char* command, char** args)
     if (!strcmp(command, "sleep")) {
         unsigned int sleep_time = atol(args[0]) * 1000;
 
+        //todo zwolnij mutex do wypisywania zadań
         usleep(sleep_time);
+        //todo podnieś mutex do wypisywania zadań
+
         return;
     }
 
@@ -65,7 +47,7 @@ void Executor::execute_command(char* command, char** args)
         return;
     }
 
-    cout << "Unknown command.\n";
+    syserr("Unknown command");
     exit(1);
 }
 
@@ -96,32 +78,38 @@ void Executor::execute_run(char* program, char** args)
     auto new_task = Task(id, program, args);
     tasksMap.emplace(id, new_task);
 
-    print_started(id, 69);
+    //new_task.start();
+
+    new_task.print_started();
 }
 
 
 void Executor::execute_out(id_t task_id)
 {
-    // todo
-    print_out(task_id, "essa");
+    auto task = tasksMap.at(task_id);
+    task.print_out();
 }
 
 
 void Executor::execute_err(id_t task_id)
 {
-    //todo
-    print_err(task_id, "essa");
+    auto task = tasksMap.at(task_id);
+    task.print_err();
 }
 
 
 void Executor::execute_kill(id_t task_id)
 {
-    print_ended(69, 500);
+    auto task = tasksMap.at(task_id);
+    task.send_signal();
 }
 
 
 void Executor::close_and_quit()
 {
+    // zakończ wszystkie taski
+
+    exit(0);
 }
 
 
