@@ -12,9 +12,6 @@ enum TaskType {
     OUT,
     ERR,
     KILL,
-    SLEEP,
-    QUIT,
-    SKIP,
 };
 
 class Task {
@@ -38,12 +35,6 @@ public:
         case ERR:
             break;
         case KILL:
-            break;
-        case SLEEP:
-            break;
-        case QUIT:
-            break;
-        case SKIP:
             break;
         }
     }

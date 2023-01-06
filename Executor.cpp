@@ -1,47 +1,97 @@
 #include "Executor.h"
 
-std::optional<TaskType> generateType(string &s) {
-    if (s == "run")
-        return TaskType::RUN;
-    if (s == "out")
-        return TaskType::OUT;
-    if (s == "err")
-        return TaskType::ERR;
-    if (s == "kill")
-        return TaskType::KILL;
-    if (s == "sleep")
-        return TaskType::SLEEP;
-    if (s == "quit")
-        return TaskType::QUIT;
-    return {};
+void Executor::print_output(string s)
+{
+    cout << "Task T stdout: '" << s << "'.\n";
 }
 
-/* Funkcja parsująca linię inputu do zadania,
- * jeżeli linia jest niepoprawna, funkcja nie zwraca obiektu. */
-std::optional<Task> Executor::parseTask(string& taskStr)
+void Executor::execute_command(char* command, char** args)
 {
-    if (taskStr.empty()) {
-        return Task(TaskType::SKIP);
+    if (!strcmp(command, "run")) {
+        char* program_name = args[0];
+        char** program_args = args + 1;
+
+        execute_run(program_name, program_args);
+        return;
     }
 
-    std::istringstream iss(taskStr);
+    if (!strcmp(command, "sleep")) {
+        unsigned int sleep_time = atol(args[0]) * 1000;
 
-    string tempElement;
-    auto args = std::vector<string>();
-
-    while (getline(iss, tempElement, ' ')) {
-        args.push_back(tempElement);
+        usleep(sleep_time);
+        return;
     }
 
-    auto type = generateType(args[0]);
+    if (!strcmp(command, "quit")) {
+        close_and_quit();
 
-    if (type.has_value()) {
-        for(int i = 0; i < args.size(); i++) {
-            cout << "args[" << i << "]: " << args[i] << endl;
-        }
+        exit(0);
     }
 
-    return {};
+    if (!strcmp(command, "\n")) {
+        return;
+    }
+
+    auto task_id = atol(args[0]);
+
+    if (!strcmp(command, "out")) {
+        execute_out(task_id);
+        return;
+    }
+
+    if (!strcmp(command, "err")) {
+        execute_err(task_id);
+        return;
+    }
+
+    if (!strcmp(command, "kill")) {
+        execute_kill(task_id);
+        return;
+    }
+
+    printf("Unknown command.");
+    exit(1);
+}
+
+void Executor::run()
+{
+    memset(input_buffer, 0, BUFFER_SIZE);
+
+    while (read_line(input_buffer, BUFFER_SIZE, stdin)) {
+
+        char** splitted_message = split_string(input_buffer);
+
+        char* command = splitted_message[0];
+        char** args = splitted_message + 1;
+
+        execute_command(command, args);
+
+        free_split_string(splitted_message);
+    }
+
+    close_and_quit(); // Czekanie aż taski się wykonają itp.
+}
+void Executor::close_and_quit()
+{
+}
+
+
+
+void Executor::execute_run(char* program, char** args)
+{
+    exit(69);
+}
+
+void Executor::execute_out(id_type task_id)
+{
+}
+
+void Executor::execute_err(id_type task_id)
+{
+}
+
+void Executor::execute_kill(id_type task_id)
+{
 }
 
 int main()
