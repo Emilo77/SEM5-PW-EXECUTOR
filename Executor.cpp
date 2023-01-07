@@ -1,12 +1,12 @@
 #include "Executor.h"
 
-void Executor::execute_command(char* command, char** args)
+void Executor::executeCommand(char* command, char** args)
 {
     if (!strcmp(command, "run")) {
         char* program_name = args[0];
         char** program_args = args + 1;
 
-        execute_run(program_name, program_args);
+        executeRun(program_name, program_args);
         return;
     }
 
@@ -21,7 +21,7 @@ void Executor::execute_command(char* command, char** args)
     }
 
     if (!strcmp(command, "quit")) {
-        close_and_quit();
+        closeAndQuit();
 
         exit(0);
     }
@@ -33,17 +33,17 @@ void Executor::execute_command(char* command, char** args)
     auto task_id = atol(args[0]);
 
     if (!strcmp(command, "out")) {
-        execute_out(task_id);
+        executeOut(task_id);
         return;
     }
 
     if (!strcmp(command, "err")) {
-        execute_err(task_id);
+        executeErr(task_id);
         return;
     }
 
     if (!strcmp(command, "kill")) {
-        execute_kill(task_id);
+        executeKill(task_id);
         return;
     }
 
@@ -54,8 +54,6 @@ void Executor::execute_command(char* command, char** args)
 
 void Executor::run()
 {
-    memset(input_buffer, 0, BUFFER_SIZE);
-
     while (read_line(input_buffer, BUFFER_SIZE, stdin)) {
 
         char** splitted_message = split_string(input_buffer);
@@ -63,19 +61,21 @@ void Executor::run()
         char* command = splitted_message[0];
         char** args = splitted_message + 1;
 
-        execute_command(command, args);
+        synchronizer.preProtocolExecutor();
+        executeCommand(command, args);
+        synchronizer.postProtocolExecutor();
 
         free_split_string(splitted_message);
     }
 
-    close_and_quit(); // Czekanie aż taski się wykonają itp.
+    closeAndQuit(); // Czekanie aż taski się wykonają itp.
 }
 
 
-void Executor::execute_run(char* program, char** args)
+void Executor::executeRun(char* program, char** args)
 {
     auto id = idGenerator.new_id();
-    auto newTask = Task(id, program, args);
+    auto newTask = Task(id, program, args, synchronizer);
     tasksMap.emplace(id, newTask);
 
     newTask.execute();
@@ -84,39 +84,40 @@ void Executor::execute_run(char* program, char** args)
 }
 
 
-void Executor::execute_out(id_t task_id)
+void Executor::executeOut(id_t task_id)
 {
     auto task = tasksMap.at(task_id);
     task.printOut();
 }
 
 
-void Executor::execute_err(id_t task_id)
+void Executor::executeErr(id_t task_id)
 {
     auto task = tasksMap.at(task_id);
     task.printErr();
 }
 
 
-void Executor::execute_kill(id_t task_id)
+void Executor::executeKill(id_t task_id)
 {
     auto task = tasksMap.at(task_id);
     task.sendSignal(SIGINT);
 }
 
 
-void Executor::close_and_quit()
+void Executor::closeAndQuit()
 {
     // zakończ wszystkie taski
     for (auto &task : tasksMap) {
         task.second.closeTask();
     }
 
+    synchronizer.destroy();
+
     //destroy mutexów
 
     exit(0);
 }
-
 
 int main()
 {

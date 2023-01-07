@@ -1,18 +1,16 @@
 #ifndef EXECUTOR_TASK_H
 #define EXECUTOR_TASK_H
 
+#include "Synchronizer.h"
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <pthread.h>
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <pthread.h>
 
-extern "C" {
-#include "err.h"
-#include "utils.h"
-};
+
 
 #define MAX_LINE_SIZE 1024
 #define NOT_DONE (-1)
@@ -29,7 +27,7 @@ private:
     pthread_t outThread;
     pthread_t errThread;
 
-    pthread_mutex_t lockPrinting;
+    Synchronizer synchronizer;
     pthread_mutex_t lockLineOut;
     pthread_mutex_t lockLineErr;
 
@@ -58,11 +56,11 @@ public:
     Task(id_t id,
         char* programName,
         char** args,
-        pthread_mutex_t lockPrinting)
+        Synchronizer &sync)
         : taskId(id)
         , programName(programName)
         , args(args)
-        , lockPrinting(lockPrinting)
+        , synchronizer(sync)
     {
         memset(lastLineOut, 0, MAX_LINE_SIZE);
         memset(lastLineErr, 0, MAX_LINE_SIZE);
@@ -71,7 +69,9 @@ public:
 
     }
 
-    void sendSignal(int sig) { kill(0, sig); }
+    void sendSignal(int sig) {
+//        kill(0, sig); //todo zmienić 0 na pid dziecka
+    }
 
     void waitForProgramEnd();
 

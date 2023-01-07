@@ -11,7 +11,6 @@
 
 #define BUFFER_SIZE 512
 
-
 class IdGenerator {
 private:
     id_t current_id = 0;
@@ -22,20 +21,26 @@ public:
 
 class Executor {
 private:
-    char input_buffer[BUFFER_SIZE] {};
-    std::map<id_t, Task> tasksMap;
     IdGenerator idGenerator;
+    char input_buffer[BUFFER_SIZE];
+    std::map<id_t, Task> tasksMap;
 
-    void execute_command(char *command, char** args);
+    Synchronizer synchronizer;
 
-    void execute_run(char* program, char** args);
-    void execute_out(id_t task_id);
-    void execute_err(id_t task_id);
-    void execute_kill(id_t task_id);
+    void executeCommand(char *command, char** args);
 
-    void close_and_quit();
+    void executeRun(char* program, char** args);
+    void executeOut(id_t task_id);
+    void executeErr(id_t task_id);
+    void executeKill(id_t task_id);
+
+    void closeAndQuit();
 
 public:
+
+    Executor() {
+        memset(input_buffer, 0, BUFFER_SIZE);
+    }
 
     void run();
 };
