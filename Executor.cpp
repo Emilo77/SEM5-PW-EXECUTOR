@@ -75,39 +75,44 @@ void Executor::run()
 void Executor::execute_run(char* program, char** args)
 {
     auto id = idGenerator.new_id();
-    auto new_task = Task(id, program, args);
-    tasksMap.emplace(id, new_task);
+    auto newTask = Task(id, program, args);
+    tasksMap.emplace(id, newTask);
 
-    //new_task.start();
+    newTask.execute();
 
-    new_task.print_started();
+    newTask.printStarted();
 }
 
 
 void Executor::execute_out(id_t task_id)
 {
     auto task = tasksMap.at(task_id);
-    task.print_out();
+    task.printOut();
 }
 
 
 void Executor::execute_err(id_t task_id)
 {
     auto task = tasksMap.at(task_id);
-    task.print_err();
+    task.printErr();
 }
 
 
 void Executor::execute_kill(id_t task_id)
 {
     auto task = tasksMap.at(task_id);
-    task.send_signal();
+    task.sendSignal(SIGINT);
 }
 
 
 void Executor::close_and_quit()
 {
     // zakończ wszystkie taski
+    for (auto &task : tasksMap) {
+        task.second.closeTask();
+    }
+
+    //destroy mutexów
 
     exit(0);
 }

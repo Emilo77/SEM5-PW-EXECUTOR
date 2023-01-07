@@ -1,46 +1,64 @@
 #include "Task.h"
 
-void Task::print_started()
+void Task::openPipes()
+{
+    if (pipe(pipeFdOut) == -1)
+        syserr("Error in out pipe\n");
+    if (pipe(pipeFdErr) == -1)
+        syserr("Error in err pipe\n");
+}
+
+void Task::initLocks() //todo może do zmiany
+{
+    if (pthread_mutex_init(&lockLineOut, 0) != 0)
+        syserr ("init lockLineOut failed");
+    if (pthread_mutex_init(&lockLineErr, 0) != 0)
+        syserr ("init lockLineErr failed");
+
+}
+
+void Task::destroyLocks()
+{
+    if (pthread_mutex_destroy(&lockLineOut) != 0)
+        syserr ("destroy lockLineOut failed");
+    if (pthread_mutex_destroy(&lockLineErr) != 0)
+        syserr ("destroy lockLineErr failed");
+}
+
+void Task::printStarted()
 {
     printf("Task %d started: pid %d.\n", taskId, execPid);
 }
 
-void Task::print_out()
+void Task::printOut()
 {
+    // podnieś mutex na ochronę
     printf("Task %d stdout: '%s'.\n", taskId, lastLineOut);
+    // opuść mutex na ochronę
 }
 
-void Task::print_err()
+void Task::printErr()
 {
+    // podnieś mutex na ochronę
     printf("Task %d stderr: '%s'.\n", taskId, lastLineErr);
+    // opuść mutex na ochronę
 }
 
-void Task::print_ended()
+void Task::printEnded()
 {
-    if (status == NOT_DONE) {
+    if ((status == NOT_DONE) && !signal) {
         syserr("Task is not done yet.");
     }
-    printf("Task %d ended: status %d.\n", taskId, status);
+
+    if (signal) {
+        printf("Task %d ended: signalled.\n", taskId);
+
+    } else {
+        printf("Task %d ended: status %d.\n", taskId, status);
+    }
 }
 
-char* Task::getLastLineOut() {
-    //todo podnieś mutex na ochronę tablicy
-    return lastLineOut;
-    //todo opuść mutex
-}
-
-char* Task::getLastLineErr() {
-    //todo podnieś mutex na ochronę tablicy
-    return lastLineErr;
-    //todo opuść mutex
-}
-
-void Task::send_signal()
-{
-
-}
-
-void Task::start_process()
+void Task::startProcess()
 {
     execPid = fork();
 
@@ -51,9 +69,9 @@ void Task::start_process()
 
     /* Proces-dziecko utworzone przez fork */
     case 0:
-        /* Zamknięcie deskryptora na standardowe wejście */
-        if (close(STDIN_FILENO) == -1)
-            syserr("Error in child, close (0)\n");
+        //        /* Zamknięcie deskryptora na standardowe wejście */
+        //        if (close(STDIN_FILENO) == -1)
+        //            syserr("Error in child, close (0)\n");
 
         /* Zamknięcie deskryptorów łączy, odpowiedzialnych za czytanie */
         if (close(pipeFdOut[0]) == -1)
@@ -99,8 +117,34 @@ void Task::start_process()
         exit(0);
     }
 }
-void Task::create_signal_thread()
+void Task::createSignalThread()
 {
+
+}
+
+void Task::execute()
+{
+
+}
+void Task::waitForProgramEnd()
+
+{
+    if ( waitpid(0, &status, 0) == -1)
+        syserr("Error in wait\n");
+
+    if (!WIFEXITED(status)) {
+        signal = true;
+    }
+}
+
+void Task::closeTask()
+{
+    //destroy mutexów
+
+    sendSignal(SIGQUIT);
+    waitForProgramEnd();
+
+    // przerwanie wątków
 
 }
 

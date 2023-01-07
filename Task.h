@@ -3,17 +3,16 @@
 
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <iostream>
+#include <pthread.h>
 
 extern "C" {
-    #include "err.h"
-    #include "utils.h"
+#include "err.h"
+#include "utils.h"
 };
-
-
 
 #define MAX_LINE_SIZE 1024
 #define NOT_DONE (-1)
@@ -30,47 +29,60 @@ private:
     pthread_t outThread;
     pthread_t errThread;
 
+    pthread_mutex_t lockPrinting;
+    pthread_mutex_t lockLineOut;
+    pthread_mutex_t lockLineErr;
+
     pid_t execPid;
 
     char lastLineOut[MAX_LINE_SIZE];
     char lastLineErr[MAX_LINE_SIZE];
 
     int status { NOT_DONE };
-    int signal { NOT_DONE };
+    bool signal { false };
 
     int pipeFdOut[2];
     int pipeFdErr[2];
 
-    char* getLastLineOut();
+    void openPipes();
 
-    char* getLastLineErr();
+    void initLocks();
 
-    void start_process();
+    void destroyLocks();
 
-    void create_signal_thread();
+    void startProcess();
+
+    void createSignalThread();
 
 public:
-
-    Task(id_t id, char* programName, char** args)
+    Task(id_t id,
+        char* programName,
+        char** args,
+        pthread_mutex_t lockPrinting)
         : taskId(id)
         , programName(programName)
         , args(args)
+        , lockPrinting(lockPrinting)
     {
         memset(lastLineOut, 0, MAX_LINE_SIZE);
         memset(lastLineErr, 0, MAX_LINE_SIZE);
 
-        if (pipe(pipeFdOut) == -1)
-            syserr("Error in out pipe\n");
-        if (pipe(pipeFdErr) == -1)
-            syserr("Error in err pipe\n");
+        openPipes();
+
     }
 
-    void print_started();
-    void print_out();
-    void print_err();
-    void print_ended();
+    void sendSignal(int sig) { kill(0, sig); }
 
-    void send_signal();
+    void waitForProgramEnd();
+
+    void printStarted();
+    void printOut();
+    void printErr();
+    void printEnded();
+
+    void closeTask();
+
+    void execute();
 };
 
 #endif // EXECUTOR_TASK_H
