@@ -15,11 +15,13 @@ add_executable(executor
 
 #do usunięcia później
 add_executable(testing testing.cpp)
+add_executable(testing2 testing2.cpp)
 
 target_link_libraries(executor utils err pthread)
 
 #do usunięcia później
 target_link_libraries(testing utils err pthread)
+target_link_libraries(testing2 utils err pthread)
 
 #macro (add_executable _name)
 #    # invoke built-in add_executable
