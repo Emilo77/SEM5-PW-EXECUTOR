@@ -1,20 +1,15 @@
-#include <cstdio>
-#include <cstring>
-#include <iostream>
-#include <map>
-#include <optional>
-#include <unistd.h>
-#include <cstring>
-#include <sys/wait.h>
 
-extern "C" {
-    #include "err.h"
-    #include "utils.h"
-};
+#include <unistd.h>
+#include <sys/wait.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include "err.h"
+#include "utils.h"
+
 
 #define BUFFER_SIZE 1024
 
-using namespace std;
 
 int main() {
     int pipe_dsc[2];
@@ -56,7 +51,7 @@ int main() {
         if (close (pipe_dsc [0]) == -1) syserr("Error in parent, close (pipe_dsc [1])\n");
 
         printf("essa rodzic \n");
-//        kill(child_pid, SIGINT);
+        kill(child_pid, SIGKILL);
 
 //        int check = waitpid(0, &status, WNOHANG);
 

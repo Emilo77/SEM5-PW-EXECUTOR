@@ -33,7 +33,7 @@ void free_split_string(char** parts);
  *
  * Read characters into buffer until a newline or EOF is encountered.
  * If we read anything (possibly just a newline), set buffer to a non-empty null-terminated string and return true.
- * Otherwise (immediate EOF), set buffer to empty string and return false.
+ * Otherwise, (immediate EOF), set buffer to empty string and return false.
  *
  * The newline is included, if we end at one.
  * If more than `size_of_buffer - 1` characters would be read, exit(1).

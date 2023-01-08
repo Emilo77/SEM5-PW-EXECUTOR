@@ -1,21 +1,19 @@
 cmake_minimum_required(VERSION 3.1)
-project(MIMUW-FORK C CXX)
+project(MIMUW-FORK C)
 
-set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_C_STANDARD "11")
 set(CMAKE_C_FLAGS "-g -Wall -Wextra -Wno-sign-compare")
 
 add_library(err err.c)
 add_library(utils utils.c)
 add_executable(executor
-        Executor.cpp
-        Task.cpp
-        Program.cpp
-        Synchronizer.cpp)
+        executor.c
+        task.c
+        synchronizer.c)
 
 #do usunięcia później
-add_executable(testing testing.cpp)
-add_executable(testing2 testing2.cpp)
+add_executable(testing testing.c)
+add_executable(testing2 testing2.c)
 
 target_link_libraries(executor utils err pthread)
 
