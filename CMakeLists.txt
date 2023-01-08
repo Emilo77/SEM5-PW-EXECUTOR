@@ -11,13 +11,6 @@ add_executable(executor
         task.c
         synchronizer.c)
 
-#do usunięcia później
-add_executable(testing testing.c)
-add_executable(testing2 testing2.c)
-
 target_link_libraries(executor utils err pthread)
 
-#do usunięcia później
-target_link_libraries(testing utils err pthread)
-target_link_libraries(testing2 utils err pthread)
 

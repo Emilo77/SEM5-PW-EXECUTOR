@@ -74,17 +74,17 @@ void executeErr(id_t taskId)
     tryToUnlock(&task->lockLineErr);
 }
 
-void* printEnded(struct Task* t)
+void* printEnded(struct Task* task)
 {
-    if ((t->status == NOT_DONE) && !t->signal) {
+    if ((task->status == NOT_DONE) && !task->signal) {
         syserr("Task is not done yet.");
     }
 
-    if (t->signal) {
-        printf("Task %d ended: signalled.\n", t->taskId);
+    if (task->signal) {
+        printf("Task %d ended: signalled.\n", task->taskId);
 
     } else {
-        printf("Task %d ended: status %d.\n", t->taskId, t->status);
+        printf("Task %d ended: status %d.\n", task->taskId, task->status);
     }
 
     return NULL;
@@ -258,7 +258,6 @@ void startTask(id_t taskId)
 void closeTask(id_t taskId)
 {
     struct Task * task = &taskArray[taskId];
-    sendSignal(taskId, SIGKILL);
 
     if (pthread_join(task->mainHelperThread, NULL) != 0)
         syserr("join mainHelper failed");

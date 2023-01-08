@@ -46,7 +46,7 @@ void destroyLocks(id_t taskId);
 
 static void* startExecProcess(struct Task* task);
 static void* waitForExecEnd(struct Task* task);
-static void* printEnded(struct Task* t);
+static void* printEnded(struct Task* task);
 static void* mainHelper(void* arg);
 static void* outReader(void* arg);
 static void* errReader(void* arg);

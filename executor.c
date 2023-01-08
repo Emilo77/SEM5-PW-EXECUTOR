@@ -6,10 +6,12 @@ void runExecutor()
 
     synchronizerInit(&synchronizer);
 
+    char **splittedMessage = NULL;
+
     while (read_line(inputBuffer, INPUT_BUFFER_SIZE, stdin)) {
 
         /* Podzielenie linii */
-        char** splittedMessage = split_string(inputBuffer);
+        splittedMessage = split_string(inputBuffer);
 
         char* command = splittedMessage[0];
         char** args = splittedMessage + 1; //todo może +1
@@ -36,36 +38,42 @@ void executeCommand(char* command, char** args)
     if (!strcmp(command, "sleep")) {
         unsigned int sleep_time = atol(args[0]) * 1000;
         usleep(sleep_time);
+        free_split_string(args - 1);
         return;
     }
 
     if (!strcmp(command, "quit")) {
+        free_split_string(args - 1);
         closeAndQuit();
-        exit(0);
     }
 
     if (!strcmp(command, "")) {
+        free_split_string(args - 1);
         return;
     }
 
     long taskId = atol(args[0]);
 
     if (!strcmp(command, "out")) {
+        free_split_string(args - 1);
         executeOut(taskId);
         return;
     }
 
     if (!strcmp(command, "err")) {
+        free_split_string(args - 1);
         executeErr(taskId);
         return;
     }
 
     if (!strcmp(command, "kill")) {
+        free_split_string(args - 1);
         sendSignal(taskId, SIGINT);
         return;
     }
 
     syserr("Unknown command");
+    free_split_string(args - 1);
     exit(1);
 }
 
@@ -84,9 +92,12 @@ void executeRun(char* program, char** args)
 
 void closeAndQuit()
 {
-//     zakończ wszystkie taski
-    for(int i = 0; i < currentTaskId; i++) {
-        closeTask(i);
+    for(int taskId = 0; taskId < currentTaskId; taskId++) {
+        sendSignal(taskId, SIGKILL);
+    }
+
+    for(int taskId = 0; taskId < currentTaskId; taskId++) {
+        closeTask(taskId);
     }
 
     synchronizerDestroy(&synchronizer);
