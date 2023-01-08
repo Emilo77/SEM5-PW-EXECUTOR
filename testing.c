@@ -8,18 +8,18 @@
 #include "utils.h"
 
 
-#define BUFFER_SIZE 1024
+#define INPUT_BUFFER_SIZE 1024
 
 
 int main() {
     int pipe_dsc[2];
 
-    char programName[BUFFER_SIZE] = "sleep";
-    char args_str[BUFFER_SIZE] = "sleep 5";
-    char buffer[BUFFER_SIZE];
+    char programName[INPUT_BUFFER_SIZE] = "sleep";
+    char args_str[INPUT_BUFFER_SIZE] = "sleep 5";
+    char buffer[INPUT_BUFFER_SIZE];
     pid_t status = -1;
 
-    memset(buffer, BUFFER_SIZE, 0);
+    memset(buffer, INPUT_BUFFER_SIZE, 0);
 
     char **args = split_string(args_str);
 
@@ -45,7 +45,7 @@ int main() {
     default:
         if (close (pipe_dsc [1]) == -1) syserr("Error in parent, close (pipe_dsc [0])\n");
 
-//        if (read (pipe_dsc [0], buffer, BUFFER_SIZE - 1) == -1)
+//        if (read (pipe_dsc [0], buffer, INPUT_BUFFER_SIZE - 1) == -1)
 //            syserr("Error in read\n");
 
         if (close (pipe_dsc [0]) == -1) syserr("Error in parent, close (pipe_dsc [1])\n");

@@ -2,11 +2,11 @@
 
 void runExecutor()
 {
-    memset(inputBuffer, 0, BUFFER_SIZE);
+    memset(inputBuffer, 0, INPUT_BUFFER_SIZE);
 
     synchronizerInit(&synchronizer);
 
-    while (read_line(inputBuffer, BUFFER_SIZE, stdin)) {
+    while (read_line(inputBuffer, INPUT_BUFFER_SIZE, stdin)) {
 
         /* Podzielenie linii */
         char** splittedMessage = split_string(inputBuffer);
@@ -19,7 +19,6 @@ void runExecutor()
         executeCommand(command, args);
     }
 
-    sleep(5);
     /* Zamknięcie wszystkich tasków i zamknięcie programu */
     closeAndQuit();
 }
@@ -62,7 +61,7 @@ void executeCommand(char* command, char** args)
     }
 
     if (!strcmp(command, "kill")) {
-        executeKill(taskId);
+        sendSignal(taskId, SIGINT);
         return;
     }
 
@@ -73,32 +72,15 @@ void executeCommand(char* command, char** args)
 void executeRun(char* program, char** args)
 {
     long newId = newTaskId();
-    struct Task task = newTask(newId, program, args);
-    taskArray[newId] = task;
+
+    struct Task *task = newTask(newId, program, args);
 
     startTask(newId);
 
+    tryToLock(&task->lockPidWaiting);
+
     printStarted(newId);
 }
-
-
-void executeOut(id_t task_id)
-{
-    printOut(task_id);
-}
-
-
-void executeErr(id_t task_id)
-{
-    printErr(task_id);
-}
-
-
-void executeKill(id_t task_id)
-{
-    sendSignal(task_id, SIGINT);
-}
-
 
 void closeAndQuit()
 {

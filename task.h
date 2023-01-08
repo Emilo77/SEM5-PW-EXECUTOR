@@ -21,6 +21,7 @@ struct Task {
     pthread_t mainHelperThread;
     pthread_mutex_t lockLineOut;
     pthread_mutex_t lockLineErr;
+    pthread_mutex_t lockPidWaiting;
 
     id_t taskId;
     pid_t execPid;
@@ -43,22 +44,20 @@ extern struct Task taskArray[MAX_TASKS];
 void initLocks(id_t taskId);
 void destroyLocks(id_t taskId);
 
-void waitForMainHelper(id_t taskId);
-
-static void startExecProcess(struct Task* t);
+static void* startExecProcess(struct Task* task);
 static void* waitForExecEnd(struct Task* task);
 static void* printEnded(struct Task* t);
 static void* mainHelper(void* arg);
 static void* outReader(void* arg);
 static void* errReader(void* arg);
 
-struct Task newTask(id_t id, char* programName, char** args);
+struct Task *newTask(id_t id, char* programName, char** args);
 
 void sendSignal(id_t taskId, int sig);
 
 void printStarted(id_t taskId);
-void printOut(id_t taskId);
-void printErr(id_t taskId);
+void executeOut(id_t taskId);
+void executeErr(id_t taskId);
 
 void startTask(id_t taskId);
 void closeTask(id_t taskId);

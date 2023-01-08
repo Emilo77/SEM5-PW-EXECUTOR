@@ -2,16 +2,18 @@
 
 struct Task taskArray[MAX_TASKS];
 
-struct Task newTask(id_t id, char* programName, char** args)
+struct Task *newTask(id_t id, char* programName, char** args)
 {
-    struct Task newTask;
+    struct Task *newTask = &taskArray[id];
 
-    newTask.taskId = id;
-    newTask.programName = programName;
-    newTask.args = args;
+    newTask->taskId = id;
+    newTask->programName = programName;
+    newTask->args = args;
+    newTask->status = NOT_DONE;
+    newTask->signal = false;
 
-    memset(newTask.lastLineOut, 0, MAX_LINE_SIZE);
-    memset(newTask.lastLineErr, 0, MAX_LINE_SIZE);
+    memset(newTask->lastLineOut, 0, MAX_LINE_SIZE);
+    memset(newTask->lastLineErr, 0, MAX_LINE_SIZE);
 
     return newTask;
 }
@@ -24,6 +26,12 @@ void initLocks(id_t id)
         syserr("synchronizerInit lockLineOut failed");
     if (pthread_mutex_init(&task->lockLineErr, 0) != 0)
         syserr("synchronizerInit lockLineErr failed");
+    if (pthread_mutex_init(&task->lockPidWaiting, 0) != 0)
+        syserr("synchronizerInit lockLineErr failed");
+
+    /* Ustawienie wartości mutexa na 0. */
+    tryToLock(&task->lockPidWaiting);
+
 }
 
 void destroyLocks(id_t taskId)
@@ -48,7 +56,7 @@ void printStarted(id_t taskId)
     printf("Task %d started: pid %d.\n", task->taskId, task->execPid);
 }
 
-void printOut(id_t taskId)
+void executeOut(id_t taskId)
 {
     struct Task * task = &taskArray[taskId];
 
@@ -57,7 +65,7 @@ void printOut(id_t taskId)
     tryToUnlock(&task->lockLineOut);
 }
 
-void printErr(id_t taskId)
+void executeErr(id_t taskId)
 {
     struct Task *task = &taskArray[taskId];
 
@@ -82,8 +90,54 @@ void* printEnded(struct Task* t)
     return NULL;
 }
 
-static void startExecProcess(struct Task* params)
+static void* startExecProcess(struct Task* task)
 {
+    task->execPid = fork();
+
+    switch (task->execPid) {
+    /* Niepowodzenie funkcji fork */
+    case -1:
+        syserr("Error in fork\n");
+
+    /* Proces-dziecko utworzone przez fork */
+    case 0:
+        /* Zamknięcie deskryptora na standardowe wejście */
+        if (close(STDIN_FILENO) == -1)
+            syserr("Error in child, close (0)\n");
+
+        /* Zamknięcie deskryptorów łączy, odpowiedzialnych za czytanie */
+        if (close(task->pipeFdOut[0]) == -1)
+            syserr("Error in child, close (pipeFdOut [0])\n");
+        if (close(task->pipeFdErr[0]) == -1)
+            syserr("Error in child, close (pipeFdErr [0])\n");
+
+        /* Zamiana STDOUT i STDERR na odpowiednie deskryptory łączy */
+        if (dup2(task->pipeFdOut[1], STDOUT_FILENO) == -1)
+            syserr("Error in child, dup (pipeFdOut [1])\n");
+        if (dup2(task->pipeFdErr[1], STDERR_FILENO) == -1)
+            syserr("Error in child, dup (pipeFdErr [1])\n");
+
+        /* Zamknięcie deskryptorów łączy, odpowiedzialnych za pisanie */
+        if (close(task->pipeFdOut[1]) == -1)
+            syserr("Error in child, close (pipeFdOut[1])\n");
+        if (close(task->pipeFdErr[1]) == -1)
+            syserr("Error in child, close (pipeFdErr[1])\n");
+
+        /* Uruchomienie programu z podanymi argumentami */
+        execvp(task->programName, task->args);
+
+        /* Sytuacja, w której funkcja execvp nie powiodła się */
+        syserr("Error in execvp\n");
+        exit(1);
+
+    /* Proces macierzysty */
+    default:
+        /* Zamknięcie deskryptorów łączy, odpowiedzialnych za pisanie */
+        if (close(task->pipeFdOut[1]) == -1)
+            syserr("Error in parent, close (pipeFdOut [1])\n");
+        if (close(task->pipeFdErr[1]) == -1)
+            syserr("Error in parent, close (pipeFdErr [1])\n");
+    }
 }
 
 void* waitForExecEnd(struct Task* task)
@@ -97,7 +151,7 @@ void* waitForExecEnd(struct Task* task)
     if (!WIFEXITED(task->status)) {
         task->signal = true;
     }
-    return NULL;
+    return 0;
 }
 
 void* mainHelper(void* arg)
@@ -106,62 +160,17 @@ void* mainHelper(void* arg)
     id_t taskId = *((id_t*)arg);
     free(arg);
 
-    struct Task* params = &taskArray[taskId];
+    struct Task* task = &taskArray[taskId];
 
     /* Utworzenie łączy */
-    if (pipe(params->pipeFdOut) == -1)
+    if (pipe(task->pipeFdOut) == -1)
         syserr("Error in out pipe\n");
-    if (pipe(params->pipeFdErr) == -1)
+    if (pipe(task->pipeFdErr) == -1)
         syserr("Error in err pipe\n");
 
-    params->execPid = fork();
+    startExecProcess(task);
 
-    printf("pthread in mainHelper: %lu\n", params->mainHelperThread);
-
-    switch (params->execPid) {
-    /* Niepowodzenie funkcji fork */
-    case -1:
-        syserr("Error in fork\n");
-
-    /* Proces-dziecko utworzone przez fork */
-    case 0:
-        /* Zamknięcie deskryptora na standardowe wejście */
-        if (close(STDIN_FILENO) == -1)
-            syserr("Error in child, close (0)\n");
-
-        /* Zamknięcie deskryptorów łączy, odpowiedzialnych za czytanie */
-        if (close(params->pipeFdOut[0]) == -1)
-            syserr("Error in child, close (pipeFdOut [0])\n");
-        if (close(params->pipeFdErr[0]) == -1)
-            syserr("Error in child, close (pipeFdErr [0])\n");
-
-        /* Zamiana STDOUT i STDERR na odpowiednie deskryptory łączy */
-        if (dup2(params->pipeFdOut[1], STDOUT_FILENO) == -1)
-            syserr("Error in child, dup (pipeFdOut [1])\n");
-        if (dup2(params->pipeFdErr[1], STDERR_FILENO) == -1)
-            syserr("Error in child, dup (pipeFdErr [1])\n");
-
-        /* Zamknięcie deskryptorów łączy, odpowiedzialnych za pisanie */
-        if (close(params->pipeFdOut[1]) == -1)
-            syserr("Error in child, close (pipeFdOut[1])\n");
-        if (close(params->pipeFdErr[1]) == -1)
-            syserr("Error in child, close (pipeFdErr[1])\n");
-
-        /* Uruchomienie programu z podanymi argumentami */
-        execvp(params->programName, params->args);
-
-        /* Sytuacja, w której funkcja execvp nie powiodła się */
-        syserr("Error in execvp\n");
-        exit(1);
-
-    /* Proces macierzysty */
-    default:
-        /* Zamknięcie deskryptorów łączy, odpowiedzialnych za pisanie */
-        if (close(params->pipeFdOut[1]) == -1)
-            syserr("Error in parent, close (pipeFdOut [1])\n");
-        if (close(params->pipeFdErr[1]) == -1)
-            syserr("Error in parent, close (pipeFdErr [1])\n");
-    }
+    tryToUnlock(&task->lockPidWaiting);
 
     id_t* taskIdPointer = (id_t*)malloc(sizeof(id_t));
     id_t* taskIdPointer2 = (id_t*)malloc(sizeof(id_t));
@@ -170,21 +179,21 @@ void* mainHelper(void* arg)
     *taskIdPointer2 = taskId;
 
     /* Stworzenie wątków pomocniczych */
-    if ((pthread_create(&params->outThread, NULL, outReader, taskIdPointer)) != 0)
+    if ((pthread_create(&task->outThread, NULL, outReader, taskIdPointer)) != 0)
         syserr("create outReader thread");
-    if ((pthread_create(&params->errThread, NULL, errReader, taskIdPointer2)) != 0)
+    if ((pthread_create(&task->errThread, NULL, errReader, taskIdPointer2)) != 0)
         syserr("create errReader thread");
 
-    waitForExecEnd(params);
+    waitForExecEnd(task);
 
-    if (pthread_join(params->outThread, NULL) != 0)
+    if (pthread_join(task->outThread, NULL) != 0)
         syserr("join 1 failed");
-    if (pthread_join(params->errThread, NULL) != 0)
+    if (pthread_join(task->errThread, NULL) != 0)
         syserr("join 2 failed");
 
-    printEnded(params);
+    printEnded(task);
 
-    return NULL;
+    return 0;
 }
 
 void* outReader(void* arg)
@@ -203,7 +212,6 @@ void* outReader(void* arg)
         tryToLock(&params->lockLineOut);
         memcpy(params->lastLineOut, localBuffer, MAX_LINE_SIZE);
         tryToUnlock(&params->lockLineOut);
-        printf("lastLineOut: %s\n", params->lastLineOut);
     }
 
     fclose(f);
@@ -236,7 +244,6 @@ void* errReader(void* arg)
 
 void startTask(id_t taskId)
 {
-
     struct Task *t = &taskArray[taskId];
 
     initLocks(taskId);
@@ -246,17 +253,12 @@ void startTask(id_t taskId)
 
     if ((pthread_create(&t->mainHelperThread, NULL, mainHelper, arg)) != 0)
         syserr("create MainHelper thread");
-
-    printf("pthread create: %lu\n", t->mainHelperThread);
 }
 
 void closeTask(id_t taskId)
 {
     struct Task * task = &taskArray[taskId];
-    sendSignal(task->execPid, SIGKILL);
-    //    waitForExecEnd(&t->taskParams);
-
-    printf("pthread join: %lu\n", task->mainHelperThread);
+    sendSignal(taskId, SIGKILL);
 
     if (pthread_join(task->mainHelperThread, NULL) != 0)
         syserr("join mainHelper failed");
@@ -264,5 +266,5 @@ void closeTask(id_t taskId)
     destroyLocks(taskId);
 
     task->args--;
-    free_split_string(task->args); // todo może w innym miejscu
+    free_split_string(task->args);
 }

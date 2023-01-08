@@ -3,9 +3,9 @@
 
 #include "task.h"
 
-#define BUFFER_SIZE 512
+#define INPUT_BUFFER_SIZE 512
 
-char inputBuffer[BUFFER_SIZE];
+char inputBuffer[INPUT_BUFFER_SIZE];
 int currentTaskId = 0;
 
 int newTaskId() { return currentTaskId++; }
@@ -13,9 +13,6 @@ int newTaskId() { return currentTaskId++; }
 void executeCommand(char* command, char** args);
 
 void executeRun(char* program, char** args);
-void executeOut(id_t task_id);
-void executeErr(id_t task_id);
-void executeKill(id_t task_id);
 
 void closeAndQuit();
 
