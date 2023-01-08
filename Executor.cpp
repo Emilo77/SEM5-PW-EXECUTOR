@@ -13,9 +13,7 @@ void Executor::executeCommand(char* command, char** args)
     if (!strcmp(command, "sleep")) {
         unsigned int sleep_time = atol(args[0]) * 1000;
 
-        //todo zwolnij mutex do wypisywania zadań
         usleep(sleep_time);
-        //todo podnieś mutex do wypisywania zadań
 
         return;
     }
@@ -56,29 +54,33 @@ void Executor::run()
 {
     while (read_line(input_buffer, BUFFER_SIZE, stdin)) {
 
+        /* Podzielenie linii */
         char** splitted_message = split_string(input_buffer);
 
         char* command = splitted_message[0];
-        char** args = splitted_message + 1;
+        char** args = splitted_message; //todo może +1
 
+        /* Wykonanie polecenia */
         synchronizer.preProtocolExecutor();
         executeCommand(command, args);
-        synchronizer.postProtocolExecutor();
 
+        /* Zwolnienie pamięci */
         free_split_string(splitted_message);
     }
 
-    closeAndQuit(); // Czekanie aż taski się wykonają itp.
+    sleep(5);
+    /* Zamknięcie wszystkich tasków i zamknięcie programu */
+//    closeAndQuit();
 }
 
 
 void Executor::executeRun(char* program, char** args)
 {
-    auto id = idGenerator.new_id();
-    auto newTask = Task(id, program, args, synchronizer);
-    tasksMap.emplace(id, newTask);
+    auto new_id = taskArray.size();
+    auto newTask = Task(new_id, program, args, synchronizer);
+    taskArray.push_back(newTask);
 
-    newTask.execute();
+    newTask.startTask();
 
     newTask.printStarted();
 }
@@ -86,21 +88,21 @@ void Executor::executeRun(char* program, char** args)
 
 void Executor::executeOut(id_t task_id)
 {
-    auto task = tasksMap.at(task_id);
+    auto task = taskArray.at(task_id);
     task.printOut();
 }
 
 
 void Executor::executeErr(id_t task_id)
 {
-    auto task = tasksMap.at(task_id);
+    auto task = taskArray.at(task_id);
     task.printErr();
 }
 
 
 void Executor::executeKill(id_t task_id)
 {
-    auto task = tasksMap.at(task_id);
+    auto task = taskArray.at(task_id);
     task.sendSignal(SIGINT);
 }
 
@@ -108,13 +110,11 @@ void Executor::executeKill(id_t task_id)
 void Executor::closeAndQuit()
 {
     // zakończ wszystkie taski
-    for (auto &task : tasksMap) {
-        task.second.closeTask();
+    for (auto &task : taskArray) {
+        task.closeTask();
     }
 
     synchronizer.destroy();
-
-    //destroy mutexów
 
     exit(0);
 }

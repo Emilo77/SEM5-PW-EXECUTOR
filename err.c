@@ -9,7 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-_Noreturn void syserr(const char* fmt, ...)
+ void syserr(const char* fmt, ...)
 {
     va_list fmt_args;
 
@@ -22,7 +22,7 @@ _Noreturn void syserr(const char* fmt, ...)
     exit(1);
 }
 
-_Noreturn void fatal(const char* fmt, ...)
+ void fatal(const char* fmt, ...)
 {
     va_list fmt_args;
 

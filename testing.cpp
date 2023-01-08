@@ -38,8 +38,8 @@ int main() {
 
     case 0:
         if (close (STDIN_FILENO) == -1)            syserr("Error in child, close (0)\n");
-        if (dup2(pipe_dsc[1],STDOUT_FILENO) == -1)            syserr("Error in dup\n");
         if (close (pipe_dsc [0]) == -1) syserr("Error in child, close (pipe_dsc [0])\n");
+        if (dup2(pipe_dsc[1],STDOUT_FILENO) == -1)            syserr("Error in dup\n");
         if (close (pipe_dsc [1]) == -1) syserr("Error in child, close (pipe_dsc [1])\n");
 
         execvp(programName, args);
@@ -56,11 +56,11 @@ int main() {
         if (close (pipe_dsc [0]) == -1) syserr("Error in parent, close (pipe_dsc [1])\n");
 
         printf("essa rodzic \n");
-        kill(child_pid, SIGINT);
+//        kill(child_pid, SIGINT);
 
 //        int check = waitpid(0, &status, WNOHANG);
 
-        sleep(1);
+//        sleep(1);
 
         if ( waitpid(0, &status, 0) == -1)
             syserr("Error in wait\n");

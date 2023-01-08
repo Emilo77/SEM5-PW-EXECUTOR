@@ -16,73 +16,79 @@
 #define NOT_DONE (-1)
 
 class Task {
+    struct TaskParams {
+        id_t taskId;
+
+        char* programName;
+        char** args;
+
+        int pipeFdOut[2];
+        int pipeFdErr[2];
+
+        char lastLineOut[MAX_LINE_SIZE];
+        char lastLineErr[MAX_LINE_SIZE];
+
+        pthread_mutex_t lockLineOut;
+        pthread_mutex_t lockLineErr;
+
+        pthread_attr_t attr;
+        pthread_t outThread;
+        pthread_t errThread;
+
+        pid_t execPid;
+
+        bool signal { false };
+        int status { NOT_DONE };
+    };
 private:
-    char* programName;
-    char** args;
-
-    id_t taskId;
-
-    pthread_attr_t attr;
-    pthread_t signalThread;
-    pthread_t outThread;
-    pthread_t errThread;
+    TaskParams taskParams;
+    pthread_t mainHelperThread{};
 
     Synchronizer synchronizer;
-    pthread_mutex_t lockLineOut;
-    pthread_mutex_t lockLineErr;
-
-    pid_t execPid;
-
-    char lastLineOut[MAX_LINE_SIZE];
-    char lastLineErr[MAX_LINE_SIZE];
-
-    int status { NOT_DONE };
-    bool signal { false };
-
-    int pipeFdOut[2];
-    int pipeFdErr[2];
 
     void openPipes();
 
     void initLocks();
 
+    void initThreadAttr();
+
     void destroyLocks();
 
-    void startProcess();
+    void startMainHelper();
+    void startReaders();
 
-    void createSignalThread();
+    static void* startExecProcess(TaskParams* threadArgs);
+    static void* waitForExecEnd(TaskParams* threadArgs);
+    static void* printEnded(TaskParams* threadArgs);
+    static void* mainHelper(void *arg);
+    static void* outReader(void* arg);
+    static void* errReader(void* arg);
 
 public:
     Task(id_t id,
         char* programName,
         char** args,
         Synchronizer &sync)
-        : taskId(id)
-        , programName(programName)
-        , args(args)
-        , synchronizer(sync)
+        : synchronizer(sync)
     {
-        memset(lastLineOut, 0, MAX_LINE_SIZE);
-        memset(lastLineErr, 0, MAX_LINE_SIZE);
+        memset(taskParams.lastLineOut, 0, MAX_LINE_SIZE);
+        memset(taskParams.lastLineErr, 0, MAX_LINE_SIZE);
 
-        openPipes();
-
+        taskParams.taskId = id;
+        taskParams.programName = programName;
+        taskParams.args = args;
     }
 
     void sendSignal(int sig) {
 //        kill(0, sig); //todo zmienić 0 na pid dziecka
     }
 
-    void waitForProgramEnd();
-
     void printStarted();
     void printOut();
     void printErr();
-    void printEnded();
 
+    void startTask();
     void closeTask();
-
-    void execute();
 };
 
 #endif // EXECUTOR_TASK_H

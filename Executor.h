@@ -3,27 +3,16 @@
 
 #include <cstring>
 #include <iostream>
-#include <map>
-#include <optional>
 #include <vector>
 
 #include "Task.h"
 
 #define BUFFER_SIZE 512
 
-class IdGenerator {
-private:
-    id_t current_id = 0;
-
-public:
-    id_t new_id() { return current_id++; }
-};
-
 class Executor {
 private:
-    IdGenerator idGenerator;
     char input_buffer[BUFFER_SIZE];
-    std::map<id_t, Task> tasksMap;
+    std::vector<Task> taskArray;
 
     Synchronizer synchronizer;
 

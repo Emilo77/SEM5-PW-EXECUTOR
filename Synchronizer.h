@@ -21,19 +21,10 @@ private:
     static void tryToLock(pthread_mutex_t& m);
     static void tryToUnlock(pthread_mutex_t& m);
 
-    void lockMutex() { tryToLock(mutex); }
-    void lockExecutor() { tryToLock(executor); }
-    void lockPrinting() { tryToLock(printing); }
-
-    void unlockMutex() { tryToUnlock(mutex); }
-    void unlockExecutor() { tryToUnlock(executor); }
-    void unlockPrinting() { tryToUnlock(printing); }
-
 public:
     Synchronizer() { init(); }
 
     void preProtocolExecutor();
-    void postProtocolExecutor();
 
     void preProtocolPrinter();
     void postProtocolPrinter();

@@ -2,10 +2,13 @@
 
 void Synchronizer::init()
 {
+    //todo ustawić na początku na 1
     if (pthread_mutex_init(&mutex, 0) != 0)
         syserr ("init lock mutex failed");
+    //todo ustawić na początku na 0
     if (pthread_mutex_init(&executor, 0) != 0)
         syserr ("init lock executor failed");
+    //todo ustawić na początku na 0
     if (pthread_mutex_init(&printing, 0) != 0)
         syserr ("init lock printing failed");
 }
@@ -33,17 +36,32 @@ void Synchronizer::tryToUnlock(pthread_mutex_t &m)
 }
 void Synchronizer::preProtocolExecutor()
 {
-    //todo z kartki
+    tryToLock(mutex);
+    if (waitingToPrint != 0) {
+        tryToUnlock(printing);
+        tryToLock(executor);
+    } else {
+        tryToUnlock(mutex);
+    }
+
 }
-void Synchronizer::postProtocolExecutor()
-{
-    //todo z kartki
-}
+
 void Synchronizer::preProtocolPrinter()
 {
-    //todo z kartki
+    tryToLock(mutex);
+    waitingToPrint++;
+    tryToUnlock(mutex);
+
+    tryToLock(printing);
 }
 void Synchronizer::postProtocolPrinter()
 {
-    //todo z kartki
+    waitingToPrint--;
+    if (waitingToPrint != 0) {
+        tryToUnlock(printing);
+    } else {
+        tryToUnlock(mutex);
+        tryToUnlock(executor);
+    }
+
 }
