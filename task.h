@@ -6,11 +6,14 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "synchronizer.h"
 
 #define MAX_LINE_SIZE 1024
+#define MAX_TASKS 512 // todo zmienić
 #define NOT_DONE (-1)
+
 
 struct TaskParams {
     id_t taskId;
@@ -42,15 +45,17 @@ struct Task {
     pthread_t mainHelperThread;
 };
 
+extern struct Task taskArray[MAX_TASKS];
+
 void initLocks(struct TaskParams* p);
 
-void initThreadAttr(struct TaskParams* p);
+void initThreadAttr(pthread_attr_t *attr);
 
 void destroyLocks(struct TaskParams* p);
 
-static void* startExecProcess(struct TaskParams* threadArgs);
-static void* waitForExecEnd(struct TaskParams* threadArgs);
-static void* printEnded(struct TaskParams* threadArgs);
+static void* startExecProcess(struct TaskParams* p);
+static void* waitForExecEnd(struct TaskParams* p);
+static void* printEnded(struct TaskParams* params);
 static void* mainHelper(void* arg);
 static void* outReader(void* arg);
 static void* errReader(void* arg);
@@ -59,9 +64,9 @@ struct Task newTask(id_t id, char* programName, char** args);
 
 void sendSignal(struct Task* t, int sig);
 
-void printStarted(struct TaskParams* t);
-void printOut(struct TaskParams* t);
-void printErr(struct TaskParams* t);
+void printStarted(struct TaskParams* params);
+void printOut(struct TaskParams* params);
+void printErr(struct TaskParams* params);
 
 void startTask(struct Task* t);
 void closeTask(struct Task* t);

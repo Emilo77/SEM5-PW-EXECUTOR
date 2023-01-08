@@ -12,14 +12,14 @@ void runExecutor()
         char** splittedMessage = split_string(inputBuffer);
 
         char* command = splittedMessage[0];
-        char** args = splittedMessage; //todo może +1
+        char** args = splittedMessage + 1; //todo może +1
 
         /* Wykonanie polecenia */
         preProtocolExecutor(&synchronizer);
         executeCommand(command, args);
 
         /* Zwolnienie pamięci */
-        free_split_string(splittedMessage);
+//        free_split_string(splittedMessage);
     }
 
     sleep(5);
@@ -31,7 +31,7 @@ void executeCommand(char* command, char** args)
 {
     if (!strcmp(command, "run")) {
         char* program_name = args[0];
-        char** program_args = args + 1;
+        char** program_args = args;
 
         executeRun(program_name, program_args);
         return;

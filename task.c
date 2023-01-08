@@ -1,6 +1,9 @@
 #include "task.h"
 
-struct Task newTask(id_t id, char* programName, char** args) {
+struct Task taskArray[MAX_TASKS];
+
+struct Task newTask(id_t id, char* programName, char** args)
+{
 
     struct TaskParams newParams;
 
@@ -35,39 +38,39 @@ void destroyLocks(struct TaskParams* taskParams)
 
 void sendSignal(struct Task* t, int sig)
 {
-    kill(t->taskParams.execPid, sig); //todo zmienić 0 na pid dziecka
+    kill(t->taskParams.execPid, sig); // todo zmienić 0 na pid dziecka
 }
 
-void printStarted(struct TaskParams* taskParams)
+void printStarted(struct TaskParams* params)
 {
-    printf("Task %d started: pid %d.\n", taskParams->taskId, taskParams->execPid);
+    printf("Task %d started: pid %d.\n", params->taskId, params->execPid);
 }
 
-void printOut(struct TaskParams* taskParams)
+void printOut(struct TaskParams* params)
 {
     // podnieś mutex na ochronę
-    printf("Task %d stdout: '%s'.\n", taskParams->taskId, taskParams->lastLineOut);
+    printf("Task %d stdout: '%s'.\n", params->taskId, params->lastLineOut);
     // opuść mutex na ochronę
 }
 
-void printErr(struct TaskParams* taskParams)
+void printErr(struct TaskParams* params)
 {
     // podnieś mutex na ochronę
-    printf("Task %d stderr: '%s'.\n", taskParams->taskId, taskParams->lastLineErr);
+    printf("Task %d stderr: '%s'.\n", params->taskId, params->lastLineErr);
     // opuść mutex na ochronę
 }
 
-void* printEnded(struct TaskParams* threadArgs)
+void* printEnded(struct TaskParams* params)
 {
-    if ((threadArgs->status == NOT_DONE) && !threadArgs->signal) {
+    if ((params->status == NOT_DONE) && !params->signal) {
         syserr("Task is not done yet.");
     }
 
-    if (threadArgs->signal) {
-        printf("Task %d ended: signalled.\n", threadArgs->taskId);
+    if (params->signal) {
+        printf("Task %d ended: signalled.\n", params->taskId);
 
     } else {
-        printf("Task %d ended: status %d.\n", threadArgs->taskId, threadArgs->status);
+        printf("Task %d ended: status %d.\n", params->taskId, params->status);
     }
 
     return NULL;
@@ -106,14 +109,6 @@ static void* startExecProcess(struct TaskParams* threadArgs)
         if (close(threadArgs->pipeFdErr[1]) == -1)
             syserr("Error in child, close (pipeFdErr[1])\n");
 
-        //        printf("%s\n", threadArgs->programName);
-        //        for(int i = 0; i < 5; i++) {
-        //            printf("%d ", threadArgs->programName[i]);
-        //        }
-        //        printf("\n");
-        //
-        //        printf("%d", )
-
         /* Uruchomienie programu z podanymi argumentami */
         execvp(threadArgs->programName, threadArgs->args);
 
@@ -129,6 +124,16 @@ static void* startExecProcess(struct TaskParams* threadArgs)
         if (close(threadArgs->pipeFdErr[1]) == -1)
             syserr("Error in parent, close (pipeFdErr [1])\n");
 
+//        sleep(1);
+//
+//        FILE* f = fdopen(threadArgs->pipeFdOut[0], "r");
+//
+//        // todo mutexy
+//        while (read_line(threadArgs->lastLineOut, MAX_LINE_SIZE - 1, f)) {}
+//
+//        printf("LastLine: %s\n", threadArgs->lastLineOut);
+//        fclose(f);
+
         return NULL;
     }
 }
@@ -136,8 +141,10 @@ static void* startExecProcess(struct TaskParams* threadArgs)
 void* waitForExecEnd(struct TaskParams* threadArgs)
 
 {
-    if (waitpid(0, &(threadArgs->status), 0) == -1)
-        syserr("Error in wait\n");
+    //    pid_t pid = waitpid(0, &(threadArgs->status), 0);
+    //    if (pid == -1 && errno != SIGCHLD) {
+    //        syserr("Error in wait\n");
+    //    }
 
     if (!WIFEXITED(threadArgs->status)) {
         threadArgs->signal = true;
@@ -145,70 +152,83 @@ void* waitForExecEnd(struct TaskParams* threadArgs)
     return NULL;
 }
 
-void initThreadAttr(struct TaskParams* taskParams)
+void initThreadAttr(pthread_attr_t *attr)
 {
-    if ((pthread_attr_init(&(taskParams->attr))) != 0)
+    if ((pthread_attr_init(attr)) != 0)
         syserr("attr_init");
 
-    if ((pthread_attr_setdetachstate(&(taskParams->attr), PTHREAD_CREATE_DETACHED)) != 0)
+    if ((pthread_attr_setdetachstate(attr, PTHREAD_CREATE_DETACHED)) != 0)
         syserr("set thread detachable");
 }
 
 void* mainHelper(void* arg)
 {
-    struct TaskParams* threadArgs = (struct TaskParams*)arg;
+
+    id_t taskId = *((id_t*)arg);
+    free(arg);
+
+    struct TaskParams* params = &taskArray[taskId].taskParams;
 
     /* Utworzenie łączy */
-    if (pipe(threadArgs->pipeFdOut) == -1)
+    if (pipe(params->pipeFdOut) == -1)
         syserr("Error in out pipe\n");
-    if (pipe(threadArgs->pipeFdErr) == -1)
+    if (pipe(params->pipeFdErr) == -1)
         syserr("Error in err pipe\n");
 
-    startExecProcess(threadArgs);
+    startExecProcess(params);
+
+    id_t* taskIdPointer = (id_t*)malloc(sizeof(id_t));
+    id_t* taskIdPointer2 = (id_t*)malloc(sizeof(id_t));
+
+    *taskIdPointer = taskId;
+    *taskIdPointer2 = taskId;
+
+    pthread_attr_t attr2;
+    initThreadAttr(&attr2);
 
     /* Stworzenie wątków pomocniczych */
-    //    if ((pthread_create(&(threadArgs->outThread), &(threadArgs->attr), outReader, &threadArgs)) != 0)
-    //        syserr("create outReader thread");
-    //    if ((pthread_create(&(threadArgs->errThread), &(threadArgs->attr), errReader, &threadArgs)) != 0)
-    //        syserr("create errReader thread");
+    if ((pthread_create(&params->outThread, &attr2, outReader, taskIdPointer)) != 0)
+        syserr("create outReader thread");
+    if ((pthread_create(&params->errThread, &attr2, errReader, taskIdPointer2)) != 0)
+        syserr("create errReader thread");
 
-    waitForExecEnd(threadArgs);
+    waitForExecEnd(params);
 
-    printEnded(threadArgs);
-
-//    if ((pthread_join(threadArgs->outThread, NULL)) != 0)
-//        syserr("join of thread failed");
-//    if ((pthread_join(threadArgs->outThread, NULL)) != 0)
-//        syserr("join of thread failed");
+    printEnded(params);
 
     return NULL;
 }
 
 void* outReader(void* arg)
 {
-    struct TaskParams* threadArgs = (struct TaskParams*)arg;
+    id_t taskId = *((id_t*)arg);
+    free(arg);
 
-    FILE* f = fdopen(threadArgs->pipeFdOut[0], "r");
+    struct TaskParams* params = &taskArray[taskId].taskParams;
+
+    FILE* f = fdopen(params->pipeFdOut[0], "r");
 
     // todo mutexy
-    while (read_line(threadArgs->lastLineOut, MAX_LINE_SIZE - 1, f)) { }
+    while (read_line(params->lastLineOut, MAX_LINE_SIZE - 1, f)) { }
 
     fclose(f);
 
-    //    if (close (threadArgs->pipeFdOut[0]) == -1)
-    //        syserr("Error in outReader, close (pipeFdOut[0])\n");
+//    printf("lastLineOut: %d\n", params->lastLineOut[0]);
 
     return NULL;
 }
 
 void* errReader(void* arg)
 {
-    struct TaskParams* threadArgs = (struct TaskParams*)arg;
+    id_t taskId = *((id_t*)arg);
+    free(arg);
 
-    FILE* f = fdopen(threadArgs->pipeFdErr[0], "r");
+    struct TaskParams* params = &taskArray[taskId].taskParams;
+
+    FILE* f = fdopen(params->pipeFdErr[0], "r");
 
     // todo mutexy
-    while (read_line(threadArgs->lastLineErr, MAX_LINE_SIZE - 1, f)) { }
+    while (read_line(params->lastLineErr, MAX_LINE_SIZE - 1, f)) { }
 
     fclose(f);
 
@@ -221,17 +241,24 @@ void* errReader(void* arg)
 void startTask(struct Task* t)
 {
     initLocks(&t->taskParams);
-    initThreadAttr(&t->taskParams);
+    initThreadAttr(&t->taskParams.attr);
+
+    id_t* taskId = (id_t*)malloc(sizeof(id_t));
+    *taskId = t->taskParams.taskId;
 
     if ((pthread_create(&(t->mainHelperThread),
-            &(t->taskParams.attr), mainHelper, &t->taskParams)) != 0)
+            &(t->taskParams.attr), mainHelper, taskId))
+        != 0)
         syserr("create MainHelper thread");
 }
 
 void closeTask(struct Task* t)
 {
-    sendSignal(t, SIGKILL); // todo może zamienić na SIGQUIT
+    sendSignal(t, SIGKILL);
     waitForExecEnd(&t->taskParams);
 
     destroyLocks(&t->taskParams);
+
+    t->taskParams.args--;
+    free(t->taskParams.args); // todo może w innym miejscu
 }

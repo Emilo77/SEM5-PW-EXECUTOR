@@ -4,9 +4,7 @@
 #include "task.h"
 
 #define BUFFER_SIZE 512
-#define MAX_TASKS 512 // todo zmienić
 
-struct Task taskArray[MAX_TASKS];
 char inputBuffer[BUFFER_SIZE];
 int currentTaskId = 0;
 
