@@ -23,8 +23,8 @@ void preProtocolExecutor(struct Synchronizer* s);
 void preProtocolPrinter(struct Synchronizer* s);
 void postProtocolPrinter(struct Synchronizer* s);
 
-static void tryToLock(pthread_mutex_t* m);
-static void tryToUnlock(pthread_mutex_t* m);
+void tryToLock(pthread_mutex_t* m);
+void tryToUnlock(pthread_mutex_t* m);
 
 void synchronizerDestroy(struct Synchronizer* s);
 

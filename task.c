@@ -4,83 +4,121 @@ struct Task taskArray[MAX_TASKS];
 
 struct Task newTask(id_t id, char* programName, char** args)
 {
-
-    struct TaskParams newParams;
-
-    newParams.taskId = id;
-    newParams.programName = programName;
-    newParams.args = args;
-
-    memset(newParams.lastLineOut, 0, MAX_LINE_SIZE);
-    memset(newParams.lastLineErr, 0, MAX_LINE_SIZE);
-
     struct Task newTask;
-    newTask.taskParams = newParams;
+
+    newTask.taskId = id;
+    newTask.programName = programName;
+    newTask.args = args;
+
+    memset(newTask.lastLineOut, 0, MAX_LINE_SIZE);
+    memset(newTask.lastLineErr, 0, MAX_LINE_SIZE);
 
     return newTask;
 }
 
-void initLocks(struct TaskParams* taskParams)
+void initLocks(id_t id)
 {
-    if (pthread_mutex_init(&taskParams->lockLineOut, 0) != 0)
+    struct Task *task = &taskArray[id];
+
+    if (pthread_mutex_init(&task->lockLineOut, 0) != 0)
         syserr("synchronizerInit lockLineOut failed");
-    if (pthread_mutex_init(&taskParams->lockLineErr, 0) != 0)
+    if (pthread_mutex_init(&task->lockLineErr, 0) != 0)
         syserr("synchronizerInit lockLineErr failed");
 }
 
-void destroyLocks(struct TaskParams* taskParams)
+void destroyLocks(id_t taskId)
 {
-    if (pthread_mutex_destroy(&taskParams->lockLineOut) != 0)
+    struct Task *task = &taskArray[taskId];
+
+    if (pthread_mutex_destroy(&task->lockLineOut) != 0)
         syserr("synchronizerDestroy lockLineOut failed");
-    if (pthread_mutex_destroy(&taskParams->lockLineErr) != 0)
+    if (pthread_mutex_destroy(&task->lockLineErr) != 0)
         syserr("synchronizerDestroy lockLineErr failed");
 }
 
-void sendSignal(struct Task* t, int sig)
+void sendSignal(id_t taskId, int sig)
 {
-    kill(t->taskParams.execPid, sig); // todo zmienić 0 na pid dziecka
+    struct Task *task = &taskArray[taskId];
+    kill(task->execPid, sig);
 }
 
-void printStarted(struct TaskParams* params)
+void printStarted(id_t taskId)
 {
-    printf("Task %d started: pid %d.\n", params->taskId, params->execPid);
+    struct Task * task = &taskArray[taskId];
+    printf("Task %d started: pid %d.\n", task->taskId, task->execPid);
 }
 
-void printOut(struct TaskParams* params)
+void printOut(id_t taskId)
 {
-    // podnieś mutex na ochronę
-    printf("Task %d stdout: '%s'.\n", params->taskId, params->lastLineOut);
-    // opuść mutex na ochronę
+    struct Task * task = &taskArray[taskId];
+
+    tryToLock(&task->lockLineOut);
+    printf("Task %d stdout: '%s'.\n", task->taskId, task->lastLineOut);
+    tryToUnlock(&task->lockLineOut);
 }
 
-void printErr(struct TaskParams* params)
+void printErr(id_t taskId)
 {
-    // podnieś mutex na ochronę
-    printf("Task %d stderr: '%s'.\n", params->taskId, params->lastLineErr);
-    // opuść mutex na ochronę
+    struct Task *task = &taskArray[taskId];
+
+    tryToLock(&task->lockLineErr);
+    printf("Task %d stderr: '%s'.\n", task->taskId, task->lastLineErr);
+    tryToUnlock(&task->lockLineErr);
 }
 
-void* printEnded(struct TaskParams* params)
+void* printEnded(struct Task* t)
 {
-    if ((params->status == NOT_DONE) && !params->signal) {
+    if ((t->status == NOT_DONE) && !t->signal) {
         syserr("Task is not done yet.");
     }
 
-    if (params->signal) {
-        printf("Task %d ended: signalled.\n", params->taskId);
+    if (t->signal) {
+        printf("Task %d ended: signalled.\n", t->taskId);
 
     } else {
-        printf("Task %d ended: status %d.\n", params->taskId, params->status);
+        printf("Task %d ended: status %d.\n", t->taskId, t->status);
     }
 
     return NULL;
 }
 
-static void* startExecProcess(struct TaskParams* threadArgs)
+static void startExecProcess(struct Task* params)
 {
-    threadArgs->execPid = fork();
+}
 
-    switch (threadArgs->execPid) {
+void* waitForExecEnd(struct Task* task)
+
+{
+    pid_t pid = waitpid(task->execPid, &(task->status), 0);
+    if (pid == -1 && errno != SIGCHLD) {
+        syserr("Error in wait\n");
+    }
+
+    if (!WIFEXITED(task->status)) {
+        task->signal = true;
+    }
+    return NULL;
+}
+
+void* mainHelper(void* arg)
+{
+
+    id_t taskId = *((id_t*)arg);
+    free(arg);
+
+    struct Task* params = &taskArray[taskId];
+
+    /* Utworzenie łączy */
+    if (pipe(params->pipeFdOut) == -1)
+        syserr("Error in out pipe\n");
+    if (pipe(params->pipeFdErr) == -1)
+        syserr("Error in err pipe\n");
+
+    params->execPid = fork();
+
+    printf("pthread in mainHelper: %lu\n", params->mainHelperThread);
+
+    switch (params->execPid) {
     /* Niepowodzenie funkcji fork */
     case -1:
         syserr("Error in fork\n");
@@ -92,25 +130,25 @@ static void* startExecProcess(struct TaskParams* threadArgs)
             syserr("Error in child, close (0)\n");
 
         /* Zamknięcie deskryptorów łączy, odpowiedzialnych za czytanie */
-        if (close(threadArgs->pipeFdOut[0]) == -1)
+        if (close(params->pipeFdOut[0]) == -1)
             syserr("Error in child, close (pipeFdOut [0])\n");
-        if (close(threadArgs->pipeFdErr[0]) == -1)
+        if (close(params->pipeFdErr[0]) == -1)
             syserr("Error in child, close (pipeFdErr [0])\n");
 
         /* Zamiana STDOUT i STDERR na odpowiednie deskryptory łączy */
-        if (dup2(threadArgs->pipeFdOut[1], STDOUT_FILENO) == -1)
+        if (dup2(params->pipeFdOut[1], STDOUT_FILENO) == -1)
             syserr("Error in child, dup (pipeFdOut [1])\n");
-        if (dup2(threadArgs->pipeFdErr[1], STDERR_FILENO) == -1)
+        if (dup2(params->pipeFdErr[1], STDERR_FILENO) == -1)
             syserr("Error in child, dup (pipeFdErr [1])\n");
 
         /* Zamknięcie deskryptorów łączy, odpowiedzialnych za pisanie */
-        if (close(threadArgs->pipeFdOut[1]) == -1)
+        if (close(params->pipeFdOut[1]) == -1)
             syserr("Error in child, close (pipeFdOut[1])\n");
-        if (close(threadArgs->pipeFdErr[1]) == -1)
+        if (close(params->pipeFdErr[1]) == -1)
             syserr("Error in child, close (pipeFdErr[1])\n");
 
         /* Uruchomienie programu z podanymi argumentami */
-        execvp(threadArgs->programName, threadArgs->args);
+        execvp(params->programName, params->args);
 
         /* Sytuacja, w której funkcja execvp nie powiodła się */
         syserr("Error in execvp\n");
@@ -119,63 +157,11 @@ static void* startExecProcess(struct TaskParams* threadArgs)
     /* Proces macierzysty */
     default:
         /* Zamknięcie deskryptorów łączy, odpowiedzialnych za pisanie */
-        if (close(threadArgs->pipeFdOut[1]) == -1)
+        if (close(params->pipeFdOut[1]) == -1)
             syserr("Error in parent, close (pipeFdOut [1])\n");
-        if (close(threadArgs->pipeFdErr[1]) == -1)
+        if (close(params->pipeFdErr[1]) == -1)
             syserr("Error in parent, close (pipeFdErr [1])\n");
-
-//        sleep(1);
-//
-//        FILE* f = fdopen(threadArgs->pipeFdOut[0], "r");
-//
-//        // todo mutexy
-//        while (read_line(threadArgs->lastLineOut, MAX_LINE_SIZE - 1, f)) {}
-//
-//        printf("LastLine: %s\n", threadArgs->lastLineOut);
-//        fclose(f);
-
-        return NULL;
     }
-}
-
-void* waitForExecEnd(struct TaskParams* threadArgs)
-
-{
-    //    pid_t pid = waitpid(0, &(threadArgs->status), 0);
-    //    if (pid == -1 && errno != SIGCHLD) {
-    //        syserr("Error in wait\n");
-    //    }
-
-    if (!WIFEXITED(threadArgs->status)) {
-        threadArgs->signal = true;
-    }
-    return NULL;
-}
-
-void initThreadAttr(pthread_attr_t *attr)
-{
-    if ((pthread_attr_init(attr)) != 0)
-        syserr("attr_init");
-
-    if ((pthread_attr_setdetachstate(attr, PTHREAD_CREATE_DETACHED)) != 0)
-        syserr("set thread detachable");
-}
-
-void* mainHelper(void* arg)
-{
-
-    id_t taskId = *((id_t*)arg);
-    free(arg);
-
-    struct TaskParams* params = &taskArray[taskId].taskParams;
-
-    /* Utworzenie łączy */
-    if (pipe(params->pipeFdOut) == -1)
-        syserr("Error in out pipe\n");
-    if (pipe(params->pipeFdErr) == -1)
-        syserr("Error in err pipe\n");
-
-    startExecProcess(params);
 
     id_t* taskIdPointer = (id_t*)malloc(sizeof(id_t));
     id_t* taskIdPointer2 = (id_t*)malloc(sizeof(id_t));
@@ -183,16 +169,18 @@ void* mainHelper(void* arg)
     *taskIdPointer = taskId;
     *taskIdPointer2 = taskId;
 
-    pthread_attr_t attr2;
-    initThreadAttr(&attr2);
-
     /* Stworzenie wątków pomocniczych */
-    if ((pthread_create(&params->outThread, &attr2, outReader, taskIdPointer)) != 0)
+    if ((pthread_create(&params->outThread, NULL, outReader, taskIdPointer)) != 0)
         syserr("create outReader thread");
-    if ((pthread_create(&params->errThread, &attr2, errReader, taskIdPointer2)) != 0)
+    if ((pthread_create(&params->errThread, NULL, errReader, taskIdPointer2)) != 0)
         syserr("create errReader thread");
 
     waitForExecEnd(params);
+
+    if (pthread_join(params->outThread, NULL) != 0)
+        syserr("join 1 failed");
+    if (pthread_join(params->errThread, NULL) != 0)
+        syserr("join 2 failed");
 
     printEnded(params);
 
@@ -204,18 +192,23 @@ void* outReader(void* arg)
     id_t taskId = *((id_t*)arg);
     free(arg);
 
-    struct TaskParams* params = &taskArray[taskId].taskParams;
+    struct Task* params = &taskArray[taskId];
 
     FILE* f = fdopen(params->pipeFdOut[0], "r");
 
+    char localBuffer[MAX_LINE_SIZE];
+
     // todo mutexy
-    while (read_line(params->lastLineOut, MAX_LINE_SIZE - 1, f)) { }
+    while (read_line(localBuffer, MAX_LINE_SIZE - 1, f)) {
+        tryToLock(&params->lockLineOut);
+        memcpy(params->lastLineOut, localBuffer, MAX_LINE_SIZE);
+        tryToUnlock(&params->lockLineOut);
+        printf("lastLineOut: %s\n", params->lastLineOut);
+    }
 
     fclose(f);
 
-//    printf("lastLineOut: %d\n", params->lastLineOut[0]);
-
-    return NULL;
+    return 0;
 }
 
 void* errReader(void* arg)
@@ -223,42 +216,53 @@ void* errReader(void* arg)
     id_t taskId = *((id_t*)arg);
     free(arg);
 
-    struct TaskParams* params = &taskArray[taskId].taskParams;
+    struct Task* task = &taskArray[taskId];
 
-    FILE* f = fdopen(params->pipeFdErr[0], "r");
+    FILE* f = fdopen(task->pipeFdErr[0], "r");
+
+    char localBuffer[MAX_LINE_SIZE];
 
     // todo mutexy
-    while (read_line(params->lastLineErr, MAX_LINE_SIZE - 1, f)) { }
+    while (read_line(localBuffer, MAX_LINE_SIZE - 1, f)) {
+        tryToLock(&task->lockLineErr);
+        memcpy(task->lastLineErr, localBuffer, MAX_LINE_SIZE);
+        tryToUnlock(&task->lockLineErr);
+    }
 
     fclose(f);
 
-    //    if (close (threadArgs->pipeFdErr[0]) == -1)
-    //        syserr("Error in errReader, close (pipeFdErr[0])\n");
-
-    return NULL;
+    return 0;
 }
 
-void startTask(struct Task* t)
+void startTask(id_t taskId)
 {
-    initLocks(&t->taskParams);
-    initThreadAttr(&t->taskParams.attr);
 
-    id_t* taskId = (id_t*)malloc(sizeof(id_t));
-    *taskId = t->taskParams.taskId;
+    struct Task *t = &taskArray[taskId];
 
-    if ((pthread_create(&(t->mainHelperThread),
-            &(t->taskParams.attr), mainHelper, taskId))
-        != 0)
+    initLocks(taskId);
+
+    id_t* arg = (id_t*)malloc(sizeof(id_t));
+    *arg = taskId;
+
+    if ((pthread_create(&t->mainHelperThread, NULL, mainHelper, arg)) != 0)
         syserr("create MainHelper thread");
+
+    printf("pthread create: %lu\n", t->mainHelperThread);
 }
 
-void closeTask(struct Task* t)
+void closeTask(id_t taskId)
 {
-    sendSignal(t, SIGKILL);
-    waitForExecEnd(&t->taskParams);
+    struct Task * task = &taskArray[taskId];
+    sendSignal(task->execPid, SIGKILL);
+    //    waitForExecEnd(&t->taskParams);
 
-    destroyLocks(&t->taskParams);
+    printf("pthread join: %lu\n", task->mainHelperThread);
 
-    t->taskParams.args--;
-    free(t->taskParams.args); // todo może w innym miejscu
+    if (pthread_join(task->mainHelperThread, NULL) != 0)
+        syserr("join mainHelper failed");
+
+    destroyLocks(taskId);
+
+    task->args--;
+    free_split_string(task->args); // todo może w innym miejscu
 }

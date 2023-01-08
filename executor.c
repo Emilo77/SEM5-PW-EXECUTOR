@@ -17,9 +17,6 @@ void runExecutor()
         /* Wykonanie polecenia */
         preProtocolExecutor(&synchronizer);
         executeCommand(command, args);
-
-        /* Zwolnienie pamięci */
-//        free_split_string(splittedMessage);
     }
 
     sleep(5);
@@ -75,34 +72,31 @@ void executeCommand(char* command, char** args)
 
 void executeRun(char* program, char** args)
 {
-    long new_id = newTaskId();
-    struct Task task = newTask(new_id, program, args);
-    taskArray[new_id] = task;
+    long newId = newTaskId();
+    struct Task task = newTask(newId, program, args);
+    taskArray[newId] = task;
 
-    startTask(&task);
+    startTask(newId);
 
-    printStarted(&task.taskParams);
+    printStarted(newId);
 }
 
 
 void executeOut(id_t task_id)
 {
-    struct Task task = taskArray[task_id];
-    printOut(&task.taskParams);
+    printOut(task_id);
 }
 
 
 void executeErr(id_t task_id)
 {
-    struct Task task = taskArray[task_id];
-    printErr(&task.taskParams);
+    printErr(task_id);
 }
 
 
 void executeKill(id_t task_id)
 {
-    struct Task task = taskArray[task_id];
-    sendSignal(&task, SIGINT);
+    sendSignal(task_id, SIGINT);
 }
 
 
@@ -110,7 +104,7 @@ void closeAndQuit()
 {
 //     zakończ wszystkie taski
     for(int i = 0; i < currentTaskId; i++) {
-        closeTask(&taskArray[i]);
+        closeTask(i);
     }
 
     synchronizerDestroy(&synchronizer);
