@@ -11,9 +11,11 @@
 struct Synchronizer {
     sem_t* mutex;
     sem_t* executor;
-    sem_t* printing;
-
-    int waitingToPrint;
+    sem_t* printer;
+     int waitingToPrint;
+     int printing;
+     int waitingToExec;
+     int executing;
 };
 
 void synchronizerInit(struct Synchronizer* s);

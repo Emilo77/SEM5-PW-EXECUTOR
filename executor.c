@@ -2,14 +2,13 @@
 
 void runExecutor()
 {
+    char inputBuffer[INPUT_BUFFER_SIZE];
     memset(inputBuffer, 0, INPUT_BUFFER_SIZE);
 
     struct Synchronizer* synchronizer = malloc(sizeof(struct Synchronizer));
-
     synchronizerInit(synchronizer);
 
-    char **splittedMessage = NULL;
-
+    char** splittedMessage = NULL;
     while (read_line(inputBuffer, INPUT_BUFFER_SIZE, stdin)) {
 
         /* Podzielenie linii */
@@ -17,11 +16,18 @@ void runExecutor()
 
         char* command = splittedMessage[0];
         char** args = splittedMessage + 1;
+        bool freeResource = false;
 
-        /* Wykonanie polecenia */
+        /* Wykonanie polecenia z zapewnieniem wykluczania
+         * z wypisywaniem skończonych tasków */
         preProtocolExecutor(synchronizer);
-        executeCommand(command, args, synchronizer);
+        executeCommand(command, args, synchronizer, &freeResource);
         postProtocolExecutor(synchronizer);
+
+        if (freeResource) {
+            /* Jeżeli linia jest niepotrzebna, zwolnienie zasobów */
+            free_split_string(splittedMessage);
+        }
     }
 
     /* Zamknięcie wszystkich tasków i zamknięcie programu */
@@ -29,56 +35,59 @@ void runExecutor()
 }
 
 void executeCommand(char* command, char** args,
-    struct Synchronizer* sync)
+    struct Synchronizer* sync, bool *freeResource)
 {
+    *freeResource = true;
+    /* Obsługa komendy run */
     if (!strcmp(command, "run")) {
         char* program_name = args[0];
         char** program_args = args;
+        *freeResource = false;
 
         executeRun(program_name, program_args, sync);
         return;
     }
 
+    /* Obsługa komendy sleep */
     if (!strcmp(command, "sleep")) {
         unsigned int sleep_time = atol(args[0]) * 1000;
         usleep(sleep_time);
-        free_split_string(args - 1);
         return;
     }
 
+    /* Obsługa komendy quit */
     if (!strcmp(command, "quit")) {
-        free_split_string(args - 1);
         postProtocolExecutor(sync);
         closeAndQuit(sync);
     }
 
+    /* Obsługa pustej linii */
     if (!strcmp(command, "")) {
-        free_split_string(args - 1);
         return;
     }
 
     long taskId = atol(args[0]);
 
+    /* Obsługa komendy out */
     if (!strcmp(command, "out")) {
-        free_split_string(args - 1);
         executeOut(taskId);
         return;
     }
 
+    /* Obsługa komendy err */
     if (!strcmp(command, "err")) {
-        free_split_string(args - 1);
         executeErr(taskId);
         return;
     }
 
+    /* Obsługa komendy kill */
     if (!strcmp(command, "kill")) {
-        free_split_string(args - 1);
         sendSignal(taskId, SIGINT);
         return;
     }
 
+    /* Sytuacja, w której komenda jest niepoprawna */
     syserr("Unknown command");
-    free_split_string(args - 1);
     postProtocolExecutor(sync);
     exit(1);
 }
@@ -88,25 +97,31 @@ void executeRun(char* program, char** args,
 {
     long newId = newTaskId();
 
-    struct Task *task = newTask(newId, program, args, sync);
+    /* Generowanie nowego taska */
+    struct Task* task = newTask(newId, program, args, sync);
 
+    /* Rozpoczęcie taska */
     startTask(newId);
 
+    /* Czekanie, aż otrzymamy numer stworzonego procesu */
     sem_wait(&task->lockPidWaiting);
 
     printStarted(newId);
 }
 
-void closeAndQuit(struct Synchronizer *sync)
+void closeAndQuit(struct Synchronizer* sync)
 {
-    for(int taskId = 0; taskId < currentTaskId; taskId++) {
+    /* Wysłanie sygnału do każdego taska */
+    for (int taskId = 0; taskId < currentTaskId; taskId++) {
         sendSignal(taskId, SIGKILL);
     }
 
-    for(int taskId = 0; taskId < currentTaskId; taskId++) {
+    /* Zamykamy każdy task, zwalniamy w nim zasoby */
+    for (int taskId = 0; taskId < currentTaskId; taskId++) {
         closeTask(taskId);
     }
 
+    /* Zwalniamy zasoby do synchronizacji */
     synchronizerDestroy(sync);
     free(sync);
     exit(0);

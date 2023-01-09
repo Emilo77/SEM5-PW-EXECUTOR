@@ -85,14 +85,14 @@ void* printEnded(struct Task* task)
     }
 
     if (task->signal) {
-//        preProtocolPrinter(task->sync);
+        preProtocolPrinter(task->sync);
         printf("Task %d ended: signalled.\n", task->taskId);
-//        postProtocolPrinter(task->sync);
+        postProtocolPrinter(task->sync);
 
     } else {
-//        preProtocolPrinter(&synchronizer);
+        preProtocolPrinter(task->sync);
         printf("Task %d ended: status %d.\n", task->taskId, WEXITSTATUS(task->status));
-//        postProtocolPrinter(&synchronizer);
+        postProtocolPrinter(task->sync);
     }
 
     return NULL;
@@ -145,6 +145,9 @@ static void* startExecProcess(struct Task* task)
             syserr("Error in parent, close (pipeFdOut [1])\n");
         if (close(task->pipeFdErr[1]) == -1)
             syserr("Error in parent, close (pipeFdErr [1])\n");
+
+        task->args--;
+        free_split_string(task->args);
     }
     return 0;
 }
@@ -175,6 +178,8 @@ void* mainHelper(void* arg)
         syserr("Error in out pipe\n");
     if (pipe(task->pipeFdErr) == -1)
         syserr("Error in err pipe\n");
+
+//   todo set_close_on_exec()
 
     startExecProcess(task);
 
@@ -213,11 +218,12 @@ void* outReader(void* arg)
 
     FILE* f = fdopen(params->pipeFdOut[0], "r");
 
-    char localBuffer[MAX_LINE_SIZE];
 
-    while (read_line(localBuffer, MAX_LINE_SIZE - 1, f)) {
+    char localOutBuffer[MAX_LINE_SIZE];
+
+    while (read_line(localOutBuffer, MAX_LINE_SIZE - 1, f)) {
         tryToLock(&params->lockLineOut);
-        memcpy(params->lastLineOut, localBuffer, MAX_LINE_SIZE);
+        memcpy(params->lastLineOut, localOutBuffer, MAX_LINE_SIZE);
         tryToUnlock(&params->lockLineOut);
     }
 
@@ -235,11 +241,11 @@ void* errReader(void* arg)
 
     FILE* f = fdopen(task->pipeFdErr[0], "r");
 
-    char localBuffer[MAX_LINE_SIZE];
+    char localErrBuffer[MAX_LINE_SIZE];
 
-    while (read_line(localBuffer, MAX_LINE_SIZE - 1, f)) {
+    while (read_line(localErrBuffer, MAX_LINE_SIZE - 1, f)) {
         tryToLock(&task->lockLineErr);
-        memcpy(task->lastLineErr, localBuffer, MAX_LINE_SIZE);
+        memcpy(task->lastLineErr, localErrBuffer, MAX_LINE_SIZE);
         tryToUnlock(&task->lockLineErr);
     }
 
@@ -269,7 +275,4 @@ void closeTask(id_t taskId)
         syserr("join mainHelper failed");
 
     destroyLocks(taskId);
-
-    task->args--;
-    free_split_string(task->args);
 }
