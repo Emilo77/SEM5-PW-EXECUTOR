@@ -19,6 +19,7 @@ void runExecutor()
         /* Wykonanie polecenia */
         preProtocolExecutor(&synchronizer);
         executeCommand(command, args);
+        postProtocolExecutor(&synchronizer);
     }
 
     /* Zamknięcie wszystkich tasków i zamknięcie programu */
@@ -44,6 +45,7 @@ void executeCommand(char* command, char** args)
 
     if (!strcmp(command, "quit")) {
         free_split_string(args - 1);
+        postProtocolExecutor(&synchronizer);
         closeAndQuit();
     }
 
@@ -74,6 +76,7 @@ void executeCommand(char* command, char** args)
 
     syserr("Unknown command");
     free_split_string(args - 1);
+    postProtocolExecutor(&synchronizer);
     exit(1);
 }
 

@@ -20,6 +20,7 @@ struct Synchronizer {
 void synchronizerInit(struct Synchronizer* s);
 
 void preProtocolExecutor(struct Synchronizer* s);
+void postProtocolExecutor(struct Synchronizer* s);
 void preProtocolPrinter(struct Synchronizer* s);
 void postProtocolPrinter(struct Synchronizer* s);
 

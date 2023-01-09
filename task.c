@@ -84,7 +84,7 @@ void* printEnded(struct Task* task)
         printf("Task %d ended: signalled.\n", task->taskId);
 
     } else {
-        printf("Task %d ended: status %d.\n", task->taskId, task->status);
+        printf("Task %d ended: status %d.\n", task->taskId, WEXITSTATUS(task->status));
     }
 
     return NULL;

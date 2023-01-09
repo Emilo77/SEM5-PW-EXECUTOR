@@ -48,30 +48,19 @@ void tryToUnlock(pthread_mutex_t* m)
 void preProtocolExecutor(struct Synchronizer* s)
 {
     tryToLock(s->mutex);
-    if (s->waitingToPrint != 0) {
-        tryToUnlock(s->printing);
-        tryToLock(s->executor);
-    } else {
-        tryToUnlock(s->mutex);
-    }
+}
+
+void postProtocolExecutor(struct Synchronizer* s)
+{
+    tryToUnlock(s->mutex);
 }
 
 void preProtocolPrinter(struct Synchronizer* s)
 {
-    tryToLock(s->mutex);
-    s->waitingToPrint++;
-    tryToUnlock(s->mutex);
-
     tryToLock(s->printing);
 }
 
 void postProtocolPrinter(struct Synchronizer* s)
 {
-    s->waitingToPrint--;
-    if (s->waitingToPrint != 0) {
-        tryToUnlock(s->printing);
-    } else {
-        tryToUnlock(s->mutex);
-        tryToUnlock(s->executor);
-    }
+    tryToUnlock(s->executor);
 }
