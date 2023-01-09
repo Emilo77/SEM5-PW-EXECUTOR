@@ -8,10 +8,12 @@
 #include "err.h"
 #include "utils.h"
 
+
 struct Synchronizer {
     sem_t* mutex;
     sem_t* executor;
     sem_t* printer;
+
      int waitingToPrint;
      int printing;
      int waitingToExec;
@@ -20,11 +22,14 @@ struct Synchronizer {
 
 void synchronizerInit(struct Synchronizer* s);
 
+/* Protokoły do synchronizacji wypisywania
+ * końca tasku i obsługi poleceń*/
 void preProtocolExecutor(struct Synchronizer* s);
 void postProtocolExecutor(struct Synchronizer* s);
 void preProtocolPrinter(struct Synchronizer* s);
 void postProtocolPrinter(struct Synchronizer* s);
 
+/* Wrappery na operacje na semaforach */
 void tryToLock(sem_t* m);
 void tryToUnlock(sem_t* m);
 

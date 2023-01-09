@@ -2,6 +2,7 @@
 
 void synchronizerInit(struct Synchronizer* s)
 {
+    /* Inicjacja zmiennych */
     s->waitingToPrint = 0;
     s->waitingToExec = 0;
     s->printing = 0;
