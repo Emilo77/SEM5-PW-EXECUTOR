@@ -22,6 +22,9 @@ struct Task {
     pthread_t mainHelperThread;
     pthread_mutex_t lockLineOut;
     pthread_mutex_t lockLineErr;
+
+    struct Synchronizer* sync;
+
     sem_t lockPidWaiting;
 
     id_t taskId;
@@ -52,7 +55,8 @@ static void* mainHelper(void* arg);
 static void* outReader(void* arg);
 static void* errReader(void* arg);
 
-struct Task *newTask(id_t id, char* programName, char** args);
+struct Task *newTask(id_t id, char* programName, char** args,
+    struct Synchronizer *sync);
 
 void sendSignal(id_t taskId, int sig);
 

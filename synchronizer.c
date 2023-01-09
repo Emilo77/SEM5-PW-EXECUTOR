@@ -1,7 +1,5 @@
 #include "synchronizer.h"
 
-struct Synchronizer synchronizer;
-
 void synchronizerInit(struct Synchronizer* s)
 {
     s->mutex = (pthread_mutex_t*) malloc(sizeof (pthread_mutex_t));
@@ -57,10 +55,10 @@ void postProtocolExecutor(struct Synchronizer* s)
 
 void preProtocolPrinter(struct Synchronizer* s)
 {
-    tryToLock(s->printing);
+    tryToLock(s->mutex);
 }
 
 void postProtocolPrinter(struct Synchronizer* s)
 {
-    tryToUnlock(s->executor);
+    tryToUnlock(s->mutex);
 }

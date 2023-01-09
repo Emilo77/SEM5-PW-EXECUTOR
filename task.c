@@ -2,7 +2,8 @@
 
 struct Task taskArray[MAX_TASKS];
 
-struct Task *newTask(id_t id, char* programName, char** args)
+struct Task *newTask(id_t id, char* programName, char** args,
+    struct Synchronizer *sync)
 {
     struct Task *newTask = &taskArray[id];
 
@@ -11,6 +12,7 @@ struct Task *newTask(id_t id, char* programName, char** args)
     newTask->args = args;
     newTask->status = NOT_DONE;
     newTask->signal = false;
+    newTask->sync = sync;
 
     memset(newTask->lastLineOut, 0, MAX_LINE_SIZE);
     memset(newTask->lastLineErr, 0, MAX_LINE_SIZE);
@@ -80,10 +82,14 @@ void* printEnded(struct Task* task)
     }
 
     if (task->signal) {
+//        preProtocolPrinter(&synchronizer);
         printf("Task %d ended: signalled.\n", task->taskId);
+//        postProtocolPrinter(&synchronizer);
 
     } else {
+//        preProtocolPrinter(&synchronizer);
         printf("Task %d ended: status %d.\n", task->taskId, WEXITSTATUS(task->status));
+//        postProtocolPrinter(&synchronizer);
     }
 
     return NULL;

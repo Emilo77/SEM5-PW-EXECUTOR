@@ -10,11 +10,11 @@ int currentTaskId = 0;
 
 int newTaskId() { return currentTaskId++; }
 
-void executeCommand(char* command, char** args);
+void executeCommand(char* command, char** args, struct Synchronizer* sync);
 
-void executeRun(char* program, char** args);
+void executeRun(char* program, char** args, struct Synchronizer* sync);
 
-void closeAndQuit();
+void closeAndQuit(struct Synchronizer *sync);
 
 void runExecutor();
 

@@ -4,7 +4,9 @@ void runExecutor()
 {
     memset(inputBuffer, 0, INPUT_BUFFER_SIZE);
 
-    synchronizerInit(&synchronizer);
+    struct Synchronizer* synchronizer = malloc(sizeof(struct Synchronizer));
+
+    synchronizerInit(synchronizer);
 
     char **splittedMessage = NULL;
 
@@ -17,22 +19,23 @@ void runExecutor()
         char** args = splittedMessage + 1; //todo może +1
 
         /* Wykonanie polecenia */
-        preProtocolExecutor(&synchronizer);
-        executeCommand(command, args);
-        postProtocolExecutor(&synchronizer);
+        preProtocolExecutor(synchronizer);
+        executeCommand(command, args, synchronizer);
+        postProtocolExecutor(synchronizer);
     }
 
     /* Zamknięcie wszystkich tasków i zamknięcie programu */
-    closeAndQuit();
+    closeAndQuit(synchronizer);
 }
 
-void executeCommand(char* command, char** args)
+void executeCommand(char* command, char** args,
+    struct Synchronizer* sync)
 {
     if (!strcmp(command, "run")) {
         char* program_name = args[0];
         char** program_args = args;
 
-        executeRun(program_name, program_args);
+        executeRun(program_name, program_args, sync);
         return;
     }
 
@@ -45,8 +48,8 @@ void executeCommand(char* command, char** args)
 
     if (!strcmp(command, "quit")) {
         free_split_string(args - 1);
-        postProtocolExecutor(&synchronizer);
-        closeAndQuit();
+        postProtocolExecutor(sync);
+        closeAndQuit(sync);
     }
 
     if (!strcmp(command, "")) {
@@ -76,15 +79,16 @@ void executeCommand(char* command, char** args)
 
     syserr("Unknown command");
     free_split_string(args - 1);
-    postProtocolExecutor(&synchronizer);
+    postProtocolExecutor(sync);
     exit(1);
 }
 
-void executeRun(char* program, char** args)
+void executeRun(char* program, char** args,
+    struct Synchronizer* sync)
 {
     long newId = newTaskId();
 
-    struct Task *task = newTask(newId, program, args);
+    struct Task *task = newTask(newId, program, args, sync);
 
     startTask(newId);
 
@@ -93,7 +97,7 @@ void executeRun(char* program, char** args)
     printStarted(newId);
 }
 
-void closeAndQuit()
+void closeAndQuit(struct Synchronizer *sync)
 {
     for(int taskId = 0; taskId < currentTaskId; taskId++) {
         sendSignal(taskId, SIGKILL);
@@ -103,7 +107,8 @@ void closeAndQuit()
         closeTask(taskId);
     }
 
-    synchronizerDestroy(&synchronizer);
+    synchronizerDestroy(sync);
+    free(sync);
     exit(0);
 }
 

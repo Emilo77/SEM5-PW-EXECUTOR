@@ -7,8 +7,6 @@
 #include "err.h"
 #include "utils.h"
 
-extern struct Synchronizer synchronizer;
-
 struct Synchronizer {
     pthread_mutex_t* mutex;
     pthread_mutex_t* executor;
