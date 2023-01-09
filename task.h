@@ -58,6 +58,7 @@ void destroySemaphores(id_t taskId);
 /* Funkcje pomocnicze, obsługiwane przez pomocniczy wątek główny */
 static void* startExecProcess(struct Task* task);
 static void* waitForExecEnd(struct Task* task);
+static void* closePipesOnExec(struct Task* task);
 static void* printEnded(struct Task* task);
 
 /* Funkcja obsługiwana przez główny wątek pomocniczy */

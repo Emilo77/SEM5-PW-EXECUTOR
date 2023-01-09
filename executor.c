@@ -129,5 +129,6 @@ void closeAndQuit(struct Synchronizer* sync)
 
 int main()
 {
+    setbuf(stdout, NULL); // todo do usunięcia
     runExecutor();
 }

@@ -105,6 +105,13 @@ void* printEnded(struct Task* task)
     return NULL;
 }
 
+static void* closePipesOnExec(struct Task* task) {
+    set_close_on_exec(task->pipeFdOut[0], true);
+    set_close_on_exec(task->pipeFdOut[1], true);
+    set_close_on_exec(task->pipeFdErr[0], true);
+    set_close_on_exec(task->pipeFdErr[1], true);
+}
+
 static void* startExecProcess(struct Task* task)
 {
     task->execPid = fork();
@@ -116,27 +123,11 @@ static void* startExecProcess(struct Task* task)
 
     /* Proces-dziecko utworzone przez fork */
     case 0:
-        /* Zamknięcie deskryptora na standardowe wejście */
-        if (close(STDIN_FILENO) == -1)
-            syserr("Error in child, close (0)\n");
-
-        /* Zamknięcie deskryptorów łączy, odpowiedzialnych za czytanie */
-        if (close(task->pipeFdOut[0]) == -1)
-            syserr("Error in child, close (pipeFdOut [0])\n");
-        if (close(task->pipeFdErr[0]) == -1)
-            syserr("Error in child, close (pipeFdErr [0])\n");
-
         /* Zamiana STDOUT i STDERR na odpowiednie deskryptory łączy */
         if (dup2(task->pipeFdOut[1], STDOUT_FILENO) == -1)
             syserr("Error in child, dup (pipeFdOut [1])\n");
         if (dup2(task->pipeFdErr[1], STDERR_FILENO) == -1)
             syserr("Error in child, dup (pipeFdErr [1])\n");
-
-        /* Zamknięcie deskryptorów łączy, odpowiedzialnych za pisanie */
-        if (close(task->pipeFdOut[1]) == -1)
-            syserr("Error in child, close (pipeFdOut[1])\n");
-        if (close(task->pipeFdErr[1]) == -1)
-            syserr("Error in child, close (pipeFdErr[1])\n");
 
         /* Uruchomienie programu z podanymi argumentami */
         execvp(task->programName, task->args);
@@ -174,6 +165,8 @@ void* waitForExecEnd(struct Task* task)
         syserr("Error in wait\n");
     }
 
+    /* Oznaczenie, że task nie zakończył się
+     * z poprawnym statusem */
     if (!WIFEXITED(task->status)) {
         task->signal = true;
     }
@@ -194,7 +187,8 @@ void* mainHelper(void* arg)
     if (pipe(task->pipeFdErr) == -1)
         syserr("Error in err pipe\n");
 
-    //   todo set_close_on_exec()
+    /* Ustawienie flag dla deskryptorów */
+    closePipesOnExec(task);
 
     /* Stworzenie procesu i rozpoczęcie programu */
     startExecProcess(task);
@@ -237,10 +231,10 @@ void* outReader(void* arg)
     free(arg);
 
     /* Pobranie zadania o podanym Id z tablicy zadań */
-    struct Task* params = &taskArray[taskId];
+    struct Task* task = &taskArray[taskId];
 
     /* Otwarcie strumienia */
-    FILE* f = fdopen(params->pipeFdOut[0], "r");
+    FILE* f = fdopen(task->pipeFdOut[0], "r");
 
     /* Inicjacja chwilowego bufora do zapisywania danych */
     char localOutBuffer[MAX_LINE_SIZE];
@@ -248,10 +242,10 @@ void* outReader(void* arg)
     while (read_line(localOutBuffer, MAX_LINE_SIZE - 1, f)) {
         /* Wzajemne wykluczanie z wypisywaniem danych
          * z bufora przez wątek główny */
-        tryToLock(&params->lockLineOut);
+        tryToLock(&task->lockLineOut);
         /* Kopiowanie do właściwego bufora */
-        memcpy(params->lastLineOut, localOutBuffer, MAX_LINE_SIZE);
-        tryToUnlock(&params->lockLineOut);
+        memcpy(task->lastLineOut, localOutBuffer, MAX_LINE_SIZE);
+        tryToUnlock(&task->lockLineOut);
     }
 
     /* Zamknięcie strumienia */
