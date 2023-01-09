@@ -12,7 +12,7 @@
 #include "synchronizer.h"
 
 #define MAX_LINE_SIZE 1024
-#define MAX_TASKS 512 // todo zmienić
+#define MAX_TASKS 4096
 #define NOT_DONE (-1)
 
 struct Task {
@@ -20,12 +20,11 @@ struct Task {
     char** args;
 
     pthread_t mainHelperThread;
-    pthread_mutex_t lockLineOut;
-    pthread_mutex_t lockLineErr;
+    sem_t lockLineOut;
+    sem_t lockLineErr;
+    sem_t lockPidWaiting;
 
     struct Synchronizer* sync;
-
-    sem_t lockPidWaiting;
 
     id_t taskId;
     pid_t execPid;

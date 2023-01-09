@@ -16,7 +16,7 @@ void runExecutor()
         splittedMessage = split_string(inputBuffer);
 
         char* command = splittedMessage[0];
-        char** args = splittedMessage + 1; //todo może +1
+        char** args = splittedMessage + 1;
 
         /* Wykonanie polecenia */
         preProtocolExecutor(synchronizer);

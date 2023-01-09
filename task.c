@@ -24,10 +24,13 @@ void initLocks(id_t id)
 {
     struct Task *task = &taskArray[id];
 
-    if (pthread_mutex_init(&task->lockLineOut, 0) != 0)
+    /* Ustawienie początkowej wartości semafora na 1 */
+    if (sem_init(&task->lockLineOut, 0, 1) == -1)
         syserr("synchronizerInit lockLineOut failed");
-    if (pthread_mutex_init(&task->lockLineErr, 0) != 0)
+    /* Ustawienie początkowej wartości semafora na 1 */
+    if (sem_init(&task->lockLineErr, 0, 1) == -1)
         syserr("synchronizerInit lockLineErr failed");
+    /* Ustawienie początkowej wartości semafora na 0 */
     if (sem_init(&task->lockPidWaiting, 0, 0) == -1)
         syserr("synchronizerInit lockPidWaiting failed");
 
@@ -37,12 +40,12 @@ void destroyLocks(id_t taskId)
 {
     struct Task *task = &taskArray[taskId];
 
-    if (pthread_mutex_destroy(&task->lockLineOut) != 0)
+    if (sem_destroy(&task->lockLineOut) == -1)
         syserr("synchronizerDestroy lockLineOut failed");
-    if (pthread_mutex_destroy(&task->lockLineErr) != 0)
+    if (sem_destroy(&task->lockLineErr) == -1)
         syserr("synchronizerDestroy lockLineErr failed");
     if (sem_destroy(&task->lockPidWaiting) == -1)
-        syserr("synchronizerInit lockPidWaiting failed");
+        syserr("synchronizerDestroy lockPidWaiting failed");
 }
 
 void sendSignal(id_t taskId, int sig)
@@ -82,9 +85,9 @@ void* printEnded(struct Task* task)
     }
 
     if (task->signal) {
-//        preProtocolPrinter(&synchronizer);
+//        preProtocolPrinter(task->sync);
         printf("Task %d ended: signalled.\n", task->taskId);
-//        postProtocolPrinter(&synchronizer);
+//        postProtocolPrinter(task->sync);
 
     } else {
 //        preProtocolPrinter(&synchronizer);
@@ -143,6 +146,7 @@ static void* startExecProcess(struct Task* task)
         if (close(task->pipeFdErr[1]) == -1)
             syserr("Error in parent, close (pipeFdErr [1])\n");
     }
+    return 0;
 }
 
 void* waitForExecEnd(struct Task* task)
@@ -161,7 +165,6 @@ void* waitForExecEnd(struct Task* task)
 
 void* mainHelper(void* arg)
 {
-
     id_t taskId = *((id_t*)arg);
     free(arg);
 
@@ -212,7 +215,6 @@ void* outReader(void* arg)
 
     char localBuffer[MAX_LINE_SIZE];
 
-    // todo mutexy
     while (read_line(localBuffer, MAX_LINE_SIZE - 1, f)) {
         tryToLock(&params->lockLineOut);
         memcpy(params->lastLineOut, localBuffer, MAX_LINE_SIZE);
@@ -235,7 +237,6 @@ void* errReader(void* arg)
 
     char localBuffer[MAX_LINE_SIZE];
 
-    // todo mutexy
     while (read_line(localBuffer, MAX_LINE_SIZE - 1, f)) {
         tryToLock(&task->lockLineErr);
         memcpy(task->lastLineErr, localBuffer, MAX_LINE_SIZE);

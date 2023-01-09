@@ -2,44 +2,44 @@
 
 void synchronizerInit(struct Synchronizer* s)
 {
-    s->mutex = (pthread_mutex_t*) malloc(sizeof (pthread_mutex_t));
-    s->executor = (pthread_mutex_t*) malloc(sizeof (pthread_mutex_t));
-    s->printing = (pthread_mutex_t*) malloc(sizeof (pthread_mutex_t));
+    s->mutex = (sem_t*) malloc(sizeof (sem_t));
+    s->executor = (sem_t*) malloc(sizeof (sem_t));
+    s->printing = (sem_t*) malloc(sizeof (sem_t));
 
-    // todo ustawić na początku na 1
-    if (pthread_mutex_init(s->mutex, 0) != 0)
-        syserr("synchronizerInit lock mutex failed");
-    // todo ustawić na początku na 0
-    if (pthread_mutex_init(s->executor, 0) != 0)
-        syserr("synchronizerInit lock initExecutor failed");
-    // todo ustawić na początku na 0
-    if (pthread_mutex_init(s->printing, 0) != 0)
-        syserr("synchronizerInit lock printing failed");
+    /* semafor ustawiony na 1 */
+    if (sem_init(s->mutex, 0, 1) == -1)
+        syserr("semaphore mutex init failed");
+    /* semafor ustawiony na 0 */
+    if (sem_init(s->executor, 0, 0) == -1)
+        syserr("semaphore executor init failed");
+    /* semafor ustawiony na 0 */
+    if (sem_init(s->printing, 0, 0) == -1)
+        syserr("semaphore printing init failed");
 }
 
 void synchronizerDestroy(struct Synchronizer* s)
 {
-    if (pthread_mutex_destroy(s->mutex) != 0)
-        syserr("synchronizerDestroy lock mutex failed");
-    if (pthread_mutex_destroy(s->executor) != 0)
-        syserr("synchronizerDestroy lock initExecutor failed");
-    if (pthread_mutex_destroy(s->printing) != 0)
-        syserr("synchronizerDestroy lock printing failed");
+    if (sem_destroy(s->mutex) == -1)
+        syserr("semaphore mutex destroy failed");
+    if (sem_destroy(s->executor) == -1)
+        syserr("semaphore executor destroy failed");
+    if (sem_destroy(s->printing) == -1)
+        syserr("semaphore printing destroy failed");
 
     free(s->mutex);
     free(s->executor);
     free(s->printing);
 }
 
-void tryToLock(pthread_mutex_t* m)
+void tryToLock(sem_t* m)
 {
-    if (pthread_mutex_lock(m) != 0)
+    if (sem_wait(m) == -1)
         syserr("lock failed");
 }
 
-void tryToUnlock(pthread_mutex_t* m)
+void tryToUnlock(sem_t* m)
 {
-    if (pthread_mutex_unlock(m) != 0)
+    if (sem_post(m) == -1)
         syserr("unlock failed");
 }
 
