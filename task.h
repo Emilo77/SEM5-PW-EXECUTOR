@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+#include <semaphore.h>
 
 #include "synchronizer.h"
 
@@ -21,7 +22,7 @@ struct Task {
     pthread_t mainHelperThread;
     pthread_mutex_t lockLineOut;
     pthread_mutex_t lockLineErr;
-    pthread_mutex_t lockPidWaiting;
+    sem_t lockPidWaiting;
 
     id_t taskId;
     pid_t execPid;

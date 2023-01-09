@@ -26,11 +26,8 @@ void initLocks(id_t id)
         syserr("synchronizerInit lockLineOut failed");
     if (pthread_mutex_init(&task->lockLineErr, 0) != 0)
         syserr("synchronizerInit lockLineErr failed");
-    if (pthread_mutex_init(&task->lockPidWaiting, 0) != 0)
-        syserr("synchronizerInit lockLineErr failed");
-
-    /* Ustawienie wartości mutexa na 0. */
-    tryToLock(&task->lockPidWaiting);
+    if (sem_init(&task->lockPidWaiting, 0, 0) == -1)
+        syserr("synchronizerInit lockPidWaiting failed");
 
 }
 
@@ -42,6 +39,8 @@ void destroyLocks(id_t taskId)
         syserr("synchronizerDestroy lockLineOut failed");
     if (pthread_mutex_destroy(&task->lockLineErr) != 0)
         syserr("synchronizerDestroy lockLineErr failed");
+    if (sem_destroy(&task->lockPidWaiting) == -1)
+        syserr("synchronizerInit lockPidWaiting failed");
 }
 
 void sendSignal(id_t taskId, int sig)
@@ -170,7 +169,7 @@ void* mainHelper(void* arg)
 
     startExecProcess(task);
 
-    tryToUnlock(&task->lockPidWaiting);
+    sem_post(&task->lockPidWaiting);
 
     id_t* taskIdPointer = (id_t*)malloc(sizeof(id_t));
     id_t* taskIdPointer2 = (id_t*)malloc(sizeof(id_t));

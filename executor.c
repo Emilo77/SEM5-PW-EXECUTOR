@@ -88,7 +88,7 @@ void executeRun(char* program, char** args)
 
     startTask(newId);
 
-    tryToLock(&task->lockPidWaiting);
+    sem_wait(&task->lockPidWaiting);
 
     printStarted(newId);
 }
