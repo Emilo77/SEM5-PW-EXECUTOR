@@ -105,21 +105,26 @@ void* printEnded(struct Task* task)
     return NULL;
 }
 
-static void* closePipesOnExec(struct Task* task) {
+void* closePipesOnExec(struct Task* task)
+{
     set_close_on_exec(task->pipeFdOut[0], true);
     set_close_on_exec(task->pipeFdOut[1], true);
     set_close_on_exec(task->pipeFdErr[0], true);
     set_close_on_exec(task->pipeFdErr[1], true);
+
+    return 0;
 }
 
-static void* startExecProcess(struct Task* task)
+void* startExecProcess(struct Task* task)
 {
     task->execPid = fork();
 
     switch (task->execPid) {
     /* Niepowodzenie funkcji fork */
-    case -1:
+    case -1: {
         syserr("Error in fork\n");
+        break;
+    }
 
     /* Proces-dziecko utworzone przez fork */
     case 0:

@@ -7,15 +7,20 @@
 
 int currentTaskId = 0;
 
+/* Generowanie nowego id */
 int newTaskId() { return currentTaskId++; }
 
+/* Obsługa polecenia */
 void executeCommand(char* command, char** args, struct Synchronizer* sync,
     bool *freeResources);
 
+/* Obsługa głównego polecenia RUN */
 void executeRun(char* program, char** args, struct Synchronizer* sync);
 
+/* Zamknięcie programu, obsługa zakończenia wątków */
 void closeAndQuit(struct Synchronizer *sync);
 
+/* Uruchomienie programu */
 void runExecutor();
 
 #endif // EXECUTOR_EXECUTOR_H
