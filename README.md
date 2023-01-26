@@ -1,9 +1,9 @@
 
 # Zadanie 'Egzekutor'
 
-Sara rozwija pewien algorytm i pisze programy, które wykonują się długo, wypisując co jakiś czas informacje o postępach. Sara chciałaby testować swoje programy, wykonując je na różnych przykładach i sprawdzając co wypisują. Przykładów do sprawdzenia i wypisywanych informacji jest jednak bardzo dużo. Przygotuj dla Sary program `initExecutor`, który w tym pomoże, wykonując wskazane zadania, sprawdzając ich ostatnie słowa (w trakcie działania programu) i ubijając je.
+Sara rozwija pewien algorytm i pisze programy, które wykonują się długo, wypisując co jakiś czas informacje o postępach. Sara chciałaby testować swoje programy, wykonując je na różnych przykładach i sprawdzając co wypisują. Przykładów do sprawdzenia i wypisywanych informacji jest jednak bardzo dużo. Przygotuj dla Sary program `Executor`, który w tym pomoże, wykonując wskazane zadania, sprawdzając ich ostatnie słowa (w trakcie działania programu) i ubijając je.
 
-Egzekutor (program `initExecutor`) powinien obsługiwać następujące polecenia (każde polecenie to jedna linia wejścia):
+Egzekutor (program `Executor`) powinien obsługiwać następujące polecenia (każde polecenie to jedna linia wejścia):
 
 ### Polecenie run
 
@@ -43,7 +43,7 @@ Wykonanie w bashu
 
 ```bash
 echo -e "foo\nbar" > in.txt;
-echo -e "run cat in.txt\nsleep 100\nout 0" | ./initExecutor
+echo -e "run cat in.txt\nsleep 100\nout 0" | ./Executor
 ```
 
 powinno wypisać na przykład:
@@ -77,10 +77,13 @@ Aby zminimalizować trudności z obsługą pamięci i błędów w języku C:
 
 - Załączony jest szablon rozwiązania `ab1234567.tar`. Można w nim znaleźć pliki `utils.h` i `utils.c` z paroma funkcjami, które mogą być pomocne. Wszystkie pliki można dowolnie modyfikować.
 - Rozwiązanie należy wysłać na Moodle w postaci pliku `ab1234567.tar` (lub `.tgz`), zawierającego folder `ab1234567`, zawierającego `CMakeLists.txt`. Oczywiście `ab1234567` należy zmienić na własne inicjały i numer indeksu.
-- Rozwiązanie musi działać na maszynie `students`, skompilowane za pomocą `CMake` (polecenie `cd ab1234567 && mkdir build && cd build && cmake .. && make` powinno wyprodukować plik wykonywalny `ab1234567/build/initExecutor`).
+- Rozwiązanie musi działać na maszynie `students`, skompilowane za pomocą `CMake` (polecenie `cd ab1234567 && mkdir build && cd build && cmake .. && make` powinno wyprodukować plik wykonywalny `ab1234567/build/Executor`).
 - Użycie `clang-format` i `clang-tidy` nie jest wymagane (ale jest jak zwykle zalecane).
 
-#### Pytania
+#### Punkty: 10/10
 
-Pytania prosimy zadawać na forum.
+<p align="center">
+  <img src="https://www.gifcen.com/wp-content/uploads/2022/09/anime-gif-15.gif" width=35%">
+</p>
+
 
